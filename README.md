@@ -34,7 +34,7 @@ begin end : start and end, in the example it runs over one year from 0 to 1
 smoothing factor | unfrozen water parameter | max number of iterations
 number of second in a day [sec] | number of time steps (in the example number of days in a year )
 sea level | max number of freezing fronts [integer number]
-Freezing front min and max depth [m]
+Freezing front min and max depth \[m\]
 saturation coefficient (fraction of 1)
 
 grid.txt includes number of grid point (n), 
