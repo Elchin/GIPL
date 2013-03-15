@@ -1,10 +1,21 @@
 # GIPL
 ====
 
-Geophysical Instutite Permafrost Lab (GIPL) model ©. <br />
+Geophysical Instutite Permafrost Lab (GIPL) model. <br />
 Original version developed by Genadii Tipenko and Vladimir Romanovsky 
-at the Geophysical Institute Permafrost Laboratory, University of Alaska Fairbanks (2004) 
-Modified by Elchin Jafarov (2012)
+at the Geophysical Institute Permafrost Laboratory, University of Alaska Fairbanks (©2004) 
+Modified by Elchin Jafarov (©2012)
+
+###What to do first: 
+**Windows**: Compile the gipl.f90 and call the executable file snuw.exe  <br />
+**Linux**: gfortran gipl.f90 -o snuw  <br />
+Copy all the files in the same folder. Create "in" folder and move all the input files "*.txt" into that folder. 
+Then create "dump" folder in tha same directory. All the **output files** will be written in that folder.
+results_001.txt include daily output and mean_001.txt include all the yearly averaged data including the active layer depth and 
+freezeup day. You also need to copy mesres.txt into the dump folder. The compare(0) is a matlab script that outputs 
+in this example calculated daily ground tempratures at four specified depths and estimates the mean average erro between the measured and the 
+calculated ground tempratures. compare(1) will recalculate the output file.
+
 
 ###Input data:
 All input files are located in the "in" folder
