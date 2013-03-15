@@ -1,9 +1,9 @@
 # GIPL
 ====
 
-Geophysical Instutite Permafrost Lab (GIPL) model
+Geophysical Instutite Permafrost Lab (GIPL) model ©. <br />
 Original version developed by Genadii Tipenko and Vladimir Romanovsky 
-at the Geophysical Institute Permafrost Laboratory, University of Alaska Fairbanks (2004)
+at the Geophysical Institute Permafrost Laboratory, University of Alaska Fairbanks (2004) 
 Modified by Elchin Jafarov (2012)
 
 ###Input data:
