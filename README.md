@@ -10,7 +10,7 @@ Modified by Elchin Jafarov (©2012)
 **Windows**: Compile the gipl.f90 and call the executable file snuw.exe  <br />
 **Linux**: gfortran gipl.f90 -o snuw  <br />
 Copy all the files in the same folder. Create "in" folder and move all the input files "*.txt" into that folder. 
-Then create "dump" folder in tha same directory. All the **output files** will be written in that folder.
+Then create "dump" folder in the same directory. All the **output files** will be written in that folder.
 results_001.txt include daily output and mean_001.txt include all the yearly averaged data including the active layer depth and 
 freezeup day. You also need to copy mesres.txt into the dump folder. The compare(0) is a matlab script that outputs 
 in this example calculated daily ground temperatures at four specified depths and estimates the mean average error between the measured and the 
