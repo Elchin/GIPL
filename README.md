@@ -5,6 +5,12 @@ Geophysical Institute Permafrost Lab (GIPL) model. <br />
 Original version developed by Genadii Tipenko and Vladimir Romanovsky 
 at the Geophysical Institute Permafrost Laboratory, University of Alaska Fairbanks (©2004) 
 Modified by Elchin Jafarov (©2012)
+More details on model implementation could be found in Jafarov et al., (2012; 2014)
+
+###References
+Jafarov E.E., Nicolsky D.J., Romanovsky V.E., Walsh J.E., Panda S.K., Serreze M.C. 2014. The effect of snow: How to better model ground surface temperatures. Cold Regions Science and Technology, Volume 102, Pages 63-77, ISSN 0165-232X, doi: 10.1016/j.coldregions.2014.02.007.  
+Jafarov, E. E., Marchenko, S. S., and Romanovsky, V. E.: Numerical modeling of permafrost dynamics in Alaska using a high spatial resolution dataset, The Cryosphere, 6, 613-624, doi:10.5194/tc-6-613-2012, 2012
+
 
 ###What to do first: 
 **Windows**: Compile the gipl.f90 and call the executable file snuw.exe  <br />
