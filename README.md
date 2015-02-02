@@ -5,6 +5,7 @@ Geophysical Institute Permafrost Lab (GIPL) model. <br />
 Original version developed by Genadii Tipenko and Vladimir Romanovsky 
 at the Geophysical Institute Permafrost Laboratory, University of Alaska Fairbanks (©2004) 
 Modified by Elchin Jafarov (©2012)
+
 More details on model implementation could be found in Jafarov et al., (2012; 2014)
 
 ###References
