@@ -5,30 +5,38 @@
 ! This version is maintained by E. Jafarov at INSTAAR, CU Boulder
 ! Please site Jafarov et al., (2012) work when using it.
     MODULE BND
-	INTEGER num_of_bnd_pts                                      ! number of upper boundary points (input)
-	real*8,allocatable::  upr_bnd_time(:), upr_bnd_temp(:,:)    ! upper boundary time and temperature (input)
-    real*8,allocatable::  time(:), utemp(:,:)                   ! time and upper boundary temprature (interpolated)
-    real*8 ,allocatable:: sn_time(:),sn_depth(:,:)              ! upper boundary snow time and snow depth (input)
-	real*8 ,allocatable:: stime(:),sdepth(:,:)                  ! upper boundary snow time and snow depth (interpolated)
+	integer n_temp                                          ! number of upper boundary points for temperature (input)
+	real*8,allocatable::  utemp_time(:), utemp(:,:)         ! upper boundary time and temperature (input)
+    real*8,allocatable::  utemp_time_i(:), utemp_i(:,:)     ! time and upper boundary temprature (interpolated)
+    integer n_snow                                          ! number of upper boundary points for snow (input)
+    real*8 ,allocatable:: snd_time(:),snd(:,:)              ! upper boundary snow time and snow depth (input)
+    integer n_stcon
+    real*8 ,allocatable:: stcon_time(:),stcon(:,:)          ! snow thermal conductivity time and itself (input)
 
-	real*8 ,allocatable:: YSNOUT (:,:)
-	real*8 ,allocatable:: RSNOUT (:,:)
+	real*8 ,allocatable:: snd_i (:,:), stcon_i (:,:)        ! snow depth and thermal conductivity (interpolated)
     real*8 TINIR,TINI
-      	INTEGER nxxsnow,NLsnow
-	integer lbound
-	
-    	integer :: ist      !cmd
-	real*8 	:: STEP,TAUM,TMIN
-	real*8  :: itfin,itfinl
-	real*8  :: E1,UWK
-	real*8  :: perl!,SLEV
-	integer :: itmax,NMEAN,NFRMAX
-	real*8  :: YFMAX,YFMIN,WFAZ
 
-      END MODULE BND
+	integer lbound                                          ! 1 const temp, 2 heat flux condition at the bottom boundary
 
-      MODULE THERMO
-      	real*8 QPHASE,SLEV
+! Parameter read from cmd file
+    integer :: restart                                      ! 0/1 start from previous time step / start from the begining
+	real*8 	:: STEP,TAUM,TMIN                               ! step is the timestep in the example it is 1 yr
+                                                            ! taum is the convergence parameter used by the stefan subroutine
+                                                            ! tmin minimal timestep used in the Stefan subroutine
+	real*8  :: time_beg,time_end                            ! inbegin time, end time
+	integer :: itmax                                        ! maximum number of iterations in Stefan subroutine
+    integer :: NMEAN                                        ! number of time steps that temp will be averaged over
+    integer :: n_frz_max                                    ! maximum number of freezing fronts
+    real*8  :: smooth_coef                                  ! smoothing factor
+    real*8  :: unf_water_coef                               ! unfrozen water coefficient
+	real*8  :: n_sec_day                                    ! number of second in a day
+	real*8  :: frz_frn_max,frz_frn_min                      ! freezing front min and max depth [meters]
+    real*8  :: sat_coef                                     ! saturation coefficient [dimensionless, fraction of 1]
+! how many meter above the sea level the borehole is
+    END MODULE BND
+
+    MODULE THERMO
+    real*8 QPHASE,SLEV
 	real*8,allocatable:: VARNOD(:,:),ACLV(:,:),BCLV(:,:),TFPV(:,:),EE(:,:)
 	real*8,allocatable:: CAPFR(:,:),CAPTH(:,:),XKFR(:,:),XKTH(:,:)
 
@@ -122,14 +130,14 @@
         allocate(RES(NMEAN,NMY+3),STAT=IERR)
 !________________INITIALIZATION________________________
 
-!      NOUT=NMEAN*ITFINL+3
+!      NOUT=NMEAN*time_end+3
 	NOUT=NMEAN+2
-      	TFIN=STEP*DBLE(NMEAN*ITFIN)
-	TFINL=STEP*DBLE(NMEAN*ITFINL)
+      	TFIN=STEP*DBLE(NMEAN*time_beg)
+	TFINL=STEP*DBLE(NMEAN*time_end)
 	TTT=0.0D0
 	TINIR=0.0D0
 !-----------------------------------------------initial data read
-	call init_cond(ist,my_rank,nx1,nx2)
+	call init_cond(restart,my_rank,nx1,nx2)
 	
 	write(MEANF1,'(A10,I3.3,A4)') 'dump/mean_',my_rank+1,'.txt'
 	write(resultf1,'(A12,I3.3,A4)') 'dump/result_',my_rank+1,'.txt'
@@ -140,14 +148,14 @@
 	write(FMT1,'(A30,I0,A12)')'(1x,I10,1x,F12.3,2(1x,F16.12),',NMY,'(1x,F16.12))'
 	write(FMT2,'(A28,I0,A40)')'(1x,I10,1x,F12.3,2(1x,F8.3),',NMY,  '(1x,F8.3),(1x,F8.3,1x,F12.3),(1x,F12.3))'
 
-      	allocate(time(NOUT),STAT=IERR)
-	allocate(utemp(NOUT,NX),STAT=IERR)
-	allocate(YSNOUT(NOUT,NX),STAT=IERR)
-	allocate(RSNOUT(NOUT,NX),STAT=IERR)
+      	allocate(utemp_time_i(NOUT),STAT=IERR)
+	allocate(utemp_i(NOUT,NX),STAT=IERR)
+	allocate(snd_i(NOUT,NX),STAT=IERR)
+	allocate(stcon_i(NOUT,NX),STAT=IERR)
 	
 !****************************************************************************	
       do I=1,NMEAN+2
-	 time(I)=TINI+DBLE(I-1)*STEP
+	 utemp_time_i(I)=TINI+DBLE(I-1)*STEP
       enddo
       IMEAN=1
 
@@ -156,10 +164,10 @@
          do ii=1,NUMSL(i)
 	      TFPV(ii,i)=-(varnod(ii,i)/aclv(ii,i))**(1.d0/bclv(ii,i))
 	 enddo
-	 call LININTRP(upr_bnd_time,upr_bnd_temp(:,I),num_of_bnd_pts,time,utemp(:,I),NOUT)
-      	 call LININTRP(stime,sdepth(:,I),NXXSNOW,time,YSNOUT(:,I),NOUT)
-	 call SnowFix(utemp(:,I),YSNOUT(:,I),NOUT)
-      	 call LININTRP(sn_time,sn_depth(:,I),NLSNOW,time,RSNOUT(:,I),NOUT)
+	 call LININTRP(utemp_time,utemp(:,I),n_temp,utemp_time_i,utemp_i(:,I),NOUT)
+      	 call LININTRP(snd_time,snd(:,I),n_snow,utemp_time_i,snd_i(:,I),NOUT)
+	 call SnowFix(utemp_i(:,I),snd_i(:,I),NOUT)
+      	 call LININTRP(stcon_time,stcon(:,I),n_stcon,utemp_time_i,stcon_i(:,I),NOUT)
 	 call active_layer(I)
       enddo
 
@@ -170,7 +178,7 @@
           6666  continue
 
 	  call stefan1D(U(I,:),NY,HY,TTT(I),TAUM,TMIN,STEP,I,NLX(I,:) &
-	    ,ITMAX,E1,UWK,lbound,GRAD(I),BOUND,GLC,GLKY,SUNWATER)
+	    ,ITMAX,smooth_coef,unf_water_coef,lbound,GRAD(I),BOUND,GLC,GLKY,SUNWATER)
 	
       !--------------------------------------------
       !--------------------------------------------
@@ -205,7 +213,7 @@
 	   FREEZUPD=FREEZUP
            do J=2,NMEAN
               if((NFRNT(J,I)-NFRNT(J-1,I)).EQ.-2)then
-        	if(YFRNT(J-1,NFRNT(J-1,I),I).GE.YFMIN) FREEZUP=SNGL(RES(J,1))
+        	if(YFRNT(J-1,NFRNT(J-1,I),I).GE.frz_frn_min) FREEZUP=SNGL(RES(J,1))
               endif
            enddo
 	   if(FREEZUP.GT.0.0)then
@@ -223,12 +231,12 @@
 	   write(2,FMT2) I,(RESTMP(JJ,I)/DBLE(NMEAN),JJ=1,NMY+3), &
  		   YYFRNT(NMEAN),FREEZUP,FREEZUPD	
 	   do j=1,NOUT
-	     time(j)=TLET(nx1)+DBLE(j-1)*STEP
+	     utemp_time_i(j)=TLET(nx1)+DBLE(j-1)*STEP
 	   enddo
-      	   call LININTRP(upr_bnd_time,upr_bnd_temp(:,I),num_of_bnd_pts,time,utemp(:,I),NOUT)
-      	   call LININTRP(stime,sdepth(:,I),NXXSNOW,time,YSNOUT(:,I),NOUT)
-	   call SnowFix(utemp(:,I),YSNOUT(:,I),NOUT)
-	   call LININTRP(sn_time,sn_depth(:,I),NLSNOW,time,RSNOUT(:,I),NOUT)
+      	   call LININTRP(utemp_time,utemp(:,I),n_temp,utemp_time_i,utemp_i(:,I),NOUT)
+      	   call LININTRP(snd_time,snd(:,I),n_snow,utemp_time_i,snd_i(:,I),NOUT)
+	   call SnowFix(utemp_i(:,I),snd_i(:,I),NOUT)
+	   call LININTRP(stcon_time,stcon(:,I),n_stcon,utemp_time_i,stcon_i(:,I),NOUT)
       enddo
 
       rewind(3) ! -------------start file writting begin     
@@ -312,31 +320,31 @@ implicit none
 !      print*, trim(finput),' has been read'
       
       open(60,file=BOUNDF)
-      	read(60,*)num_of_bnd_pts
-	allocate(upr_bnd_time(num_of_bnd_pts),STAT=IERR)
-	allocate(upr_bnd_temp(num_of_bnd_pts,NX),STAT=IERR)
-	do i=1,num_of_bnd_pts
-          read(60,*) upr_bnd_time(I),(upr_bnd_temp(I,J),J=1,NX)
+      	read(60,*)n_temp
+	allocate(utemp_time(n_temp),STAT=IERR)
+	allocate(utemp(n_temp,NX),STAT=IERR)
+	do i=1,n_temp
+          read(60,*) utemp_time(I),(utemp(I,J),J=1,NX)
 	enddo
       close(60)
 !      print*,trim(boundf),' has been read'
 
       open(60,file=RSNOWF)
-         read(60,*)NLsnow
-	allocate(sn_time(NLSNOW),STAT=IERR)
-	allocate(sn_depth(NLSNOW,NX),STAT=IERR)
-	do i=1,nlsnow
-      	   read(60,*) sn_time(i),(sn_depth(i,J),J=1,NX)
+         read(60,*)n_stcon
+	allocate(stcon_time(n_stcon),STAT=IERR)
+	allocate(stcon(n_stcon,NX),STAT=IERR)
+	do i=1,n_stcon
+      	   read(60,*) stcon_time(i),(stcon(i,J),J=1,NX)
 	enddo
       close(60)
 !      print*,trim(rsnowf),' has been read'
 
       open(60,file=SNOWF)
-      	read(60,*)nxxsnow
-	allocate(stime(NXXSNOW),STAT=IERR)
-	allocate(sdepth(NXXSNOW,NX),STAT=IERR)
-	do I=1,nxxsnow
-          read(60,*) stime(i),(sdepth(i,J),J=1,NX)
+      	read(60,*)n_snow
+	allocate(snd_time(n_snow),STAT=IERR)
+	allocate(snd(n_snow,NX),STAT=IERR)
+	do I=1,n_snow
+          read(60,*) snd_time(i),(snd(i,J),J=1,NX)
 	enddo
       close(60)
 !      print*,trim(snowf),' has been read' 
@@ -353,7 +361,7 @@ implicit none
       close(60)
 !      print*,trim(inif),'has been read'	
       
-      TINI=upr_bnd_time(1)
+      TINI=utemp_time(1)
       XTI(:)=gtzone(:,1)
       do i=1,nx
 	k=gt_zone_code(i)
@@ -361,14 +369,14 @@ implicit none
       enddo
 
       open(60,FILE=cmdf)
-	read(60,*)IST
+	read(60,*)restart
 	read(60,*)STEP,TAUM,TMIN
-      	read(60,*)ITFIN,ITFINL
-      	read(60,*)E1,UWK,itmax
-      	read(60,*)perl,NMEAN
-	read(60,*)SLEV,NFRMAX
-        read(60,*)YFMIN,YFMAX
-      	read(60,*)WFAZ
+      	read(60,*) time_beg,time_end
+      	read(60,*) smooth_coef,unf_water_coef,itmax  !smoothing factor | unfrozen water parameter | max number of iterations
+      	read(60,*) n_sec_day,NMEAN ! number of second in a day [sec] | number of time steps (in the example number of days in a year )
+        read(60,*) SLEV,n_frz_max
+        read(60,*) frz_frn_min,frz_frn_max
+      	read(60,*) sat_coef
       close(60)
 !      print*,trim(cmdf),' has been read'
 
@@ -498,7 +506,7 @@ implicit none
 	do i=2,ny
 	 hy(i)=y(i)-y(i-1)
 	enddo
-	HCSCALE=glm*glm/perl
+	HCSCALE=glm*glm/n_sec_day
 	CAPFR=CAPFR*HCSCALE
 	CAPTH=CAPTH*HCSCALE
   	CSNOW=CSNOW*HCSCALE
@@ -507,7 +515,7 @@ implicit none
 	allocate(U(NX,NY),STAT=IERR)
 	allocate(NLX(NX,NY),STAT=IERR)
 	allocate(IMEAN(NX),STAT=IERR)
-	allocate(YFRNT(NMEAN,NFRMAX,NX),STAT=IERR)
+	allocate(YFRNT(NMEAN,n_frz_max,NX),STAT=IERR)
       	allocate(NFRNT(NMEAN,NX),STAT=IERR)
 	allocate(TFPV(NNPG,nx),STAT=IERR)	
 	
@@ -525,11 +533,11 @@ implicit none
    integer i,j
    character*64 inif
    
-	if(q.EQ.1)then !ist=1 means reading initial data from 
+	if(q.EQ.1)then !restart=1 means reading initial data from 
           do I=first,last
     	    call LININTRP(XTI,YTI(:,I),NXTI,YM,U(I,:),NY)
 	  enddo
-	elseif(IST.EQ.0)then  			!ist=0 enbales spinup
+	elseif(restart.EQ.0)then  			!restart=0 enbales spinup
      	  write(INIF,'(A11,I3.3,A4)') 'dump/start_',curr+1,'.txt'
 !	  write(INIF,'(A9,I3.3,A4)') 'in/start_',my_rank+1,'.txt'
       	  open(60,file=INIF,action='READ')
@@ -557,21 +565,21 @@ real*8 SUNWATER
 	  NFRNT(IMEAN(k),k)=0
 	  do 1329 JJ=1,NY-1
              J=NY-JJ
-	     if (YM(J).GE.SLEV.AND.YM(J+1).LE.YFMAX)then
+	     if (YM(J).GE.SLEV.AND.YM(J+1).LE.frz_frn_max)then
                GA=SUNWATER(U(k,J),NLX(k,J),k)
                GB=SUNWATER(U(k,J+1),NLX(k,J+1),k)
-        	  if((GA-WFAZ)*(GB-WFAZ).LE.0.D0) then
+        	  if((GA-sat_coef)*(GB-sat_coef).LE.0.D0) then
         	     GY=(GA-GB)/(YM(J)-YM(J+1))
         	     GX=(GA+GB-GY*(YM(J)+YM(J+1)))/2.D0
         	     if(GY.EQ.0.D0) then
                        YFRON=(YM(J)+YM(J+1))/2.D0
         	     else
-                       YFRON=(WFAZ-GX)/GY
+                       YFRON=(sat_coef-GX)/GY
         	     endif
         	  else
         	     GOTO 1329
         	  endif
-        	  if(NFRNT(IMEAN(k),k).LT.NFRMAX)then
+        	  if(NFRNT(IMEAN(k),k).LT.n_frz_max)then
         	    NFRNT(IMEAN(k),k)=NFRNT(IMEAN(k),k)+1
         	    YFRNT(IMEAN(k),NFRNT(IMEAN(k),k),k)=YFRON
         	  endif
@@ -669,21 +677,21 @@ end subroutine save_results
       REAL*8 T
       INTEGER I,II
 	II=1+IDINT((T-TINIR)/STEP)
-	BOUND=utemp(II,I)+(T+TINI-time(II)) &
-	  *(utemp(II+1,I)-utemp(II,I))/(time(II+1)-time(II))
+	BOUND=utemp_i(II,I)+(T+TINI-utemp_time_i(II)) &
+	  *(utemp_i(II+1,I)-utemp_i(II,I))/(utemp_time_i(II+1)-utemp_time_i(II))
       RETURN
       END
 !----------------------------------------
-Subroutine SnowFix(air_temp,sn_depth,n)
+Subroutine SnowFix(air_temp,stcon,n)
 
 real*8, intent (in)  :: air_temp(n)
-real*8, intent (out) :: sn_depth(n)
+real*8, intent (out) :: stcon(n)
 integer :: n
 
-   if(air_temp(1).gt.0.and.sn_depth(1).gt.0)sn_depth(1)=0 
+   if(air_temp(1).gt.0.and.stcon(1).gt.0)stcon(1)=0 
    do i=2,n 
-      if(air_temp(i).gt.0.and.sn_depth(i).gt.0)then 
-	if (sn_depth(i-1).eq.0)sn_depth(i)=0 ! puts zeros only at the begining of the year
+      if(air_temp(i).gt.0.and.stcon(i).gt.0)then 
+	if (stcon(i-1).eq.0)stcon(i)=0 ! puts zeros only at the begining of the year
       endif
    enddo
 
@@ -743,8 +751,8 @@ SUBROUTINE LININTRP(XIN,YIN,NIN,XOUT,YOUT,NOUT)
 	REAL*8 T
 	INTEGER I,II
       II=1+IDINT((T-TINIR)/STEP)
-      SLEVEL=YSNOUT(II,I)+(T+TINI-time(II))* &
-	(YSNOUT(II+1,I)-YSNOUT(II,I))/(time(II+1)-time(II))
+      SLEVEL=snd_i(II,I)+(T+TINI-utemp_time_i(II))* &
+	(snd_i(II+1,I)-snd_i(II,I))/(utemp_time_i(II+1)-utemp_time_i(II))
 	RETURN
       END
 !-----------------------------------------------
@@ -763,8 +771,8 @@ SUBROUTINE LININTRP(XIN,YIN,NIN,XOUT,YOUT,NOUT)
 	      GLKY=1.d4
        ELSEIF (YM(j).Lt.XSNOW)THEN	!snow
               II=1+IDINT((tlet-TINIR)/STEP)
-	      glky=RSNOUT(II,I)+(tlet+TINI-time(II))* &
- 			(RSNOUT(II+1,I)-RSNOUT(II,I))/(time(II+1)-time(II))
+	      glky=stcon_i(II,I)+(tlet+TINI-utemp_time_i(II))* &
+ 			(stcon_i(II+1,I)-stcon_i(II,I))/(utemp_time_i(II+1)-utemp_time_i(II))
        ELSE				!ground
               WC=UNWATER(V,NS,I)/VARNOD(NS,I)
 	      GLKY=(XKTH(NS,I)**WC)*(XKFR(NS,I)**(1.0-WC))
@@ -836,14 +844,14 @@ SUBROUTINE LININTRP(XIN,YIN,NIN,XOUT,YOUT,NOUT)
       END
 !-------------------------------------------------------
  SUBROUTINE stefan1D(UU,NY,HY,TTT,TAUM,TMIN,STEP,I,NMS, &
- ITMAX,E1,UWK,NBOUND,flux,BOUND,GLC,GLKY,SUNWATER)
+ ITMAX,smooth_coef,unf_water_coef,NBOUND,flux,BOUND,GLC,GLKY,SUNWATER)
 	USE THERMO
       IMPLICIT NONE
       INTEGER NMS,NY,ITMAX,NBOUND,I
       DIMENSION NMS(NY)
       real*8 HY(NY),UU(NY)
       REAL*8 TTT,TAUM,TINI,TMIN,STEP
-      REAL*8 E1,UWK
+      REAL*8 smooth_coef,unf_water_coef
       REAL*8 BOUND,flux,GLC,GLKY,SUNWATER
 
       INTEGER J,IT
@@ -908,7 +916,7 @@ SUBROUTINE LININTRP(XIN,YIN,NIN,XOUT,YOUT,NOUT)
 	  EEY1=SUNWATER(U1(J),NMS(J),I)
 	  abs1=DABS(EEY-EEY1)
 	  abs2=DABS(U1(J)-U2(J))
-	  IF((abs1.GT.UWK).or.(abs2.GT.E1)) then 
+	  IF((abs1.GT.unf_water_coef).or.(abs2.GT.smooth_coef)) then 
 	    U1=U2
             IT=IT+1
             GOTO 22
