@@ -1,34 +1,19 @@
+! Geophysical Instatitue Permafrost Laboratory model version 2 GIPLv2
+! version 2 is a numerical transient model that employs phase changes and the effect of the unfrozen volumetric  water content in the non-homogeniuos soil texture 
+! Original version of the model developed by Romanovsky and Tipenko 2004 and described in Marchenko et al., (2008)
+! Current version been significanlty modefied from its predicessor and using the IRF coding design
+! This version is maintained by E. Jafarov at INSTAAR, CU Boulder
+! Please site Jafarov et al., (2012) work when using it.
+    MODULE BND
+	INTEGER num_of_bnd_pts                                      ! number of upper boundary points (input)
+	real*8,allocatable::  upr_bnd_time(:), upr_bnd_temp(:,:)    ! upper boundary time and temperature (input)
+    real*8,allocatable::  time(:), utemp(:,:)                   ! time and upper boundary temprature (interpolated)
+    real*8 ,allocatable:: sn_time(:),sn_depth(:,:)              ! upper boundary snow time and snow depth (input)
+	real*8 ,allocatable:: stime(:),sdepth(:,:)                  ! upper boundary snow time and snow depth (interpolated)
 
-! Notes: read new thermo and then put it in the old structure 
-! File thermo and input1. txt had been corrected
-! no oldId, Csnow and nbound declared inside of the code
-! line 347 YYS(i,1)=0!YM(1) is not correct
-! spinup added corrected version of perm4
-! modified 11/03/09 :      gt_zone_code(:) was added
-! modified 11/06/09
-! modified 11/18/09 : SnowFix is added ( no snow in fall when temp>0)
-! modified 11/21/09 : new reading procedure added ak_gtzone_18km instead of initial.txt
-! modified 11/23/09 : reads xt(1) from bound; first day of calculations and makes tini=xt(1)
-! modified 02/14/10
-! modified 04/24/10 : nmean is corrected for 366 case, allocated(numsl) removed
-! modified 09/04/10 : modified for correct nmean
-! modified 09/15/10 : added vegetation file read, 1 pros initializes all the necess input variables
-! modified 06/20/11 : getrid of auxilary function references
-! modified 06/27/11 : fully serial
-! modified 07/06/11 : fully serial
-! NOTE!!! MODIFIE START READING ROUTINNE
-      MODULE BND
-	INTEGER NXT
-	real*8,allocatable::  XT(:)
-	real*8,allocatable::  YT(:,:)
-
-      	real*8,allocatable::  XTOUT(:)
-	real*8 ,allocatable:: YTOUT(:,:)
-      	real*8 TINIR,TINI
-	real*8  ,allocatable:: XXSNOW1(:),XXSNOW2(:,:)
-	real*8 ,allocatable:: SNOWYL1(:),SNOWYL2(:,:)
 	real*8 ,allocatable:: YSNOUT (:,:)
 	real*8 ,allocatable:: RSNOUT (:,:)
+    real*8 TINIR,TINI
       	INTEGER nxxsnow,NLsnow
 	integer lbound
 	
@@ -155,14 +140,14 @@
 	write(FMT1,'(A30,I0,A12)')'(1x,I10,1x,F12.3,2(1x,F16.12),',NMY,'(1x,F16.12))'
 	write(FMT2,'(A28,I0,A40)')'(1x,I10,1x,F12.3,2(1x,F8.3),',NMY,  '(1x,F8.3),(1x,F8.3,1x,F12.3),(1x,F12.3))'
 
-      	allocate(XTOUT(NOUT),STAT=IERR)
-	allocate(YTOUT(NOUT,NX),STAT=IERR)
+      	allocate(time(NOUT),STAT=IERR)
+	allocate(utemp(NOUT,NX),STAT=IERR)
 	allocate(YSNOUT(NOUT,NX),STAT=IERR)
 	allocate(RSNOUT(NOUT,NX),STAT=IERR)
 	
 !****************************************************************************	
       do I=1,NMEAN+2
-	 XTOUT(I)=TINI+DBLE(I-1)*STEP
+	 time(I)=TINI+DBLE(I-1)*STEP
       enddo
       IMEAN=1
 
@@ -171,10 +156,10 @@
          do ii=1,NUMSL(i)
 	      TFPV(ii,i)=-(varnod(ii,i)/aclv(ii,i))**(1.d0/bclv(ii,i))
 	 enddo
-	 call LININTRP(XT,YT(:,I),NXT,XTOUT,YTOUT(:,I),NOUT)
-      	 call LININTRP(XXSNOW1,XXSNOW2(:,I),NXXSNOW,XTOUT,YSNOUT(:,I),NOUT)
-	 call SnowFix(YTOUT(:,I),YSNOUT(:,I),NOUT)
-      	 call LININTRP(SNOWYL1,SNOWYL2(:,I),NLSNOW,XTOUT,RSNOUT(:,I),NOUT)
+	 call LININTRP(upr_bnd_time,upr_bnd_temp(:,I),num_of_bnd_pts,time,utemp(:,I),NOUT)
+      	 call LININTRP(stime,sdepth(:,I),NXXSNOW,time,YSNOUT(:,I),NOUT)
+	 call SnowFix(utemp(:,I),YSNOUT(:,I),NOUT)
+      	 call LININTRP(sn_time,sn_depth(:,I),NLSNOW,time,RSNOUT(:,I),NOUT)
 	 call active_layer(I)
       enddo
 
@@ -238,12 +223,12 @@
 	   write(2,FMT2) I,(RESTMP(JJ,I)/DBLE(NMEAN),JJ=1,NMY+3), &
  		   YYFRNT(NMEAN),FREEZUP,FREEZUPD	
 	   do j=1,NOUT
-	     XTOUT(j)=TLET(nx1)+DBLE(j-1)*STEP
+	     time(j)=TLET(nx1)+DBLE(j-1)*STEP
 	   enddo
-      	   call LININTRP(XT,YT(:,I),NXT,XTOUT,YTOUT(:,I),NOUT)
-      	   call LININTRP(XXSNOW1,XXSNOW2(:,I),NXXSNOW,XTOUT,YSNOUT(:,I),NOUT)
-	   call SnowFix(YTOUT(:,I),YSNOUT(:,I),NOUT)
-	   call LININTRP(SNOWYL1,SNOWYL2(:,I),NLSNOW,XTOUT,RSNOUT(:,I),NOUT)
+      	   call LININTRP(upr_bnd_time,upr_bnd_temp(:,I),num_of_bnd_pts,time,utemp(:,I),NOUT)
+      	   call LININTRP(stime,sdepth(:,I),NXXSNOW,time,YSNOUT(:,I),NOUT)
+	   call SnowFix(utemp(:,I),YSNOUT(:,I),NOUT)
+	   call LININTRP(sn_time,sn_depth(:,I),NLSNOW,time,RSNOUT(:,I),NOUT)
       enddo
 
       rewind(3) ! -------------start file writting begin     
@@ -327,31 +312,31 @@ implicit none
 !      print*, trim(finput),' has been read'
       
       open(60,file=BOUNDF)
-      	read(60,*)nxt
-	allocate(XT(NXT),STAT=IERR)
-	allocate(YT(NXT,NX),STAT=IERR)
-	do i=1,nxt
-          read(60,*) XT(I),(YT(I,J),J=1,NX)
+      	read(60,*)num_of_bnd_pts
+	allocate(upr_bnd_time(num_of_bnd_pts),STAT=IERR)
+	allocate(upr_bnd_temp(num_of_bnd_pts,NX),STAT=IERR)
+	do i=1,num_of_bnd_pts
+          read(60,*) upr_bnd_time(I),(upr_bnd_temp(I,J),J=1,NX)
 	enddo
       close(60)
 !      print*,trim(boundf),' has been read'
 
       open(60,file=RSNOWF)
          read(60,*)NLsnow
-	allocate(SNOWYL1(NLSNOW),STAT=IERR)
-	allocate(SNOWYL2(NLSNOW,NX),STAT=IERR)
+	allocate(sn_time(NLSNOW),STAT=IERR)
+	allocate(sn_depth(NLSNOW,NX),STAT=IERR)
 	do i=1,nlsnow
-      	   read(60,*) snowyl1(i),(snowyl2(i,J),J=1,NX)
+      	   read(60,*) sn_time(i),(sn_depth(i,J),J=1,NX)
 	enddo
       close(60)
 !      print*,trim(rsnowf),' has been read'
 
       open(60,file=SNOWF)
       	read(60,*)nxxsnow
-	allocate(XXSNOW1(NXXSNOW),STAT=IERR)
-	allocate(XXSNOW2(NXXSNOW,NX),STAT=IERR)
+	allocate(stime(NXXSNOW),STAT=IERR)
+	allocate(sdepth(NXXSNOW,NX),STAT=IERR)
 	do I=1,nxxsnow
-          read(60,*) xxsnow1(i),(xxsnow2(i,J),J=1,NX)
+          read(60,*) stime(i),(sdepth(i,J),J=1,NX)
 	enddo
       close(60)
 !      print*,trim(snowf),' has been read' 
@@ -368,7 +353,7 @@ implicit none
       close(60)
 !      print*,trim(inif),'has been read'	
       
-      TINI=xt(1)
+      TINI=upr_bnd_time(1)
       XTI(:)=gtzone(:,1)
       do i=1,nx
 	k=gt_zone_code(i)
@@ -684,8 +669,8 @@ end subroutine save_results
       REAL*8 T
       INTEGER I,II
 	II=1+IDINT((T-TINIR)/STEP)
-	BOUND=YTOUT(II,I)+(T+TINI-XTOUT(II)) &
-	  *(YTOUT(II+1,I)-YTOUT(II,I))/(XTOUT(II+1)-XTOUT(II))
+	BOUND=utemp(II,I)+(T+TINI-time(II)) &
+	  *(utemp(II+1,I)-utemp(II,I))/(time(II+1)-time(II))
       RETURN
       END
 !----------------------------------------
@@ -758,8 +743,8 @@ SUBROUTINE LININTRP(XIN,YIN,NIN,XOUT,YOUT,NOUT)
 	REAL*8 T
 	INTEGER I,II
       II=1+IDINT((T-TINIR)/STEP)
-      SLEVEL=YSNOUT(II,I)+(T+TINI-XTOUT(II))* &
-	(YSNOUT(II+1,I)-YSNOUT(II,I))/(XTOUT(II+1)-XTOUT(II))
+      SLEVEL=YSNOUT(II,I)+(T+TINI-time(II))* &
+	(YSNOUT(II+1,I)-YSNOUT(II,I))/(time(II+1)-time(II))
 	RETURN
       END
 !-----------------------------------------------
@@ -778,8 +763,8 @@ SUBROUTINE LININTRP(XIN,YIN,NIN,XOUT,YOUT,NOUT)
 	      GLKY=1.d4
        ELSEIF (YM(j).Lt.XSNOW)THEN	!snow
               II=1+IDINT((tlet-TINIR)/STEP)
-	      glky=RSNOUT(II,I)+(tlet+TINI-XTOUT(II))* &
- 			(RSNOUT(II+1,I)-RSNOUT(II,I))/(XTOUT(II+1)-XTOUT(II))
+	      glky=RSNOUT(II,I)+(tlet+TINI-time(II))* &
+ 			(RSNOUT(II+1,I)-RSNOUT(II,I))/(time(II+1)-time(II))
        ELSE				!ground
               WC=UNWATER(V,NS,I)/VARNOD(NS,I)
 	      GLKY=(XKTH(NS,I)**WC)*(XKFR(NS,I)**(1.0-WC))
