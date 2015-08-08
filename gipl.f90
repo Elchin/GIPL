@@ -4,7 +4,7 @@
 ! Current version been significanlty modefied from its predicessor and using the IRF coding design
 ! This version is maintained by E. Jafarov at INSTAAR, CU Boulder
 ! Please site Jafarov et al., (2012) work when using it.
-    MODULE BND
+module bnd
 	integer n_temp                                          ! number of upper boundary points for temperature (input)
 	real*8,allocatable::  utemp_time(:), utemp(:,:)         ! upper boundary time and temperature (input)
     real*8,allocatable::  utemp_time_i(:), utemp_i(:,:)     ! time and upper boundary temprature (interpolated)
@@ -12,17 +12,15 @@
     real*8 ,allocatable:: snd_time(:),snd(:,:)              ! upper boundary snow time and snow depth (input)
     integer n_stcon
     real*8 ,allocatable:: stcon_time(:),stcon(:,:)          ! snow thermal conductivity time and itself (input)
-
 	real*8 ,allocatable:: snd_i (:,:), stcon_i (:,:)        ! snow depth and thermal conductivity (interpolated)
     real*8 TINIR,TINI
-
 	integer lbound                                          ! 1 const temp, 2 heat flux condition at the bottom boundary
 
 ! Parameter read from cmd file
     integer :: restart                                      ! 0/1 start from previous time step / start from the begining
-	real*8 	:: STEP,TAUM,TMIN                               ! step is the timestep in the example it is 1 yr
-                                                            ! taum is the convergence parameter used by the stefan subroutine
-                                                            ! tmin minimal timestep used in the Stefan subroutine
+	real*8 	:: STEP                                         ! step is the timestep in the example it is 1 yr
+    real*8 	:: TAUM                                         ! taum is the convergence parameter used by the stefan subroutine
+    real*8 	:: TMIN                                         ! tmin minimal timestep used in the Stefan subroutine
 	real*8  :: time_beg,time_end                            ! inbegin time, end time
 	integer :: itmax                                        ! maximum number of iterations in Stefan subroutine
     integer :: NMEAN                                        ! number of time steps that temp will be averaged over
@@ -32,57 +30,70 @@
 	real*8  :: n_sec_day                                    ! number of second in a day
 	real*8  :: frz_frn_max,frz_frn_min                      ! freezing front min and max depth [meters]
     real*8  :: sat_coef                                     ! saturation coefficient [dimensionless, fraction of 1]
-! how many meter above the sea level the borehole is
-    END MODULE BND
 
-    MODULE THERMO
-    real*8 QPHASE,SLEV
-	real*8,allocatable:: VARNOD(:,:),ACLV(:,:),BCLV(:,:),TFPV(:,:),EE(:,:)
-	real*8,allocatable:: CAPFR(:,:),CAPTH(:,:),XKFR(:,:),XKTH(:,:)
+end module bnd
 
-	real*8,allocatable:: VARNOD1(:,:),ACLV1(:,:),BCLV1(:,:),EE1(:,:)
-	real*8,allocatable:: CAPFR1(:,:),CAPTH1(:,:),XKFR1(:,:),XKTH1(:,:)
-	real*8 CSNOW
+module thermo
+    real*8 L_fus                                            ! Latent heat of fusion [W/mK]
+    real*8 sea_level                                        ! how many meter above the sea level the borehole is
 
-	real*8, allocatable :: U(:,:)
-	real, allocatable:: YYS(:,:)
+! thermo physical parameters of soil for each soil layer
+    real*8,allocatable:: vwc(:,:)                           ! volumetric water content
+    real*8,allocatable:: a_coef(:,:),b_coef(:,:)            ! a and b unfrozen water curve coefficients
+    real*8,allocatable:: temp_frz(:,:)                      ! temperature freezing depression
+    real*8,allocatable:: EE(:,:)
+	real*8,allocatable:: hcap_frz(:,:),hcap_thw(:,:)        ! soil layer heat capacity thawed/frozen
+    real*8,allocatable:: tcon_frz(:,:),tcon_thw(:,:)        ! soil layer thermal conductivity thawed/frozen
+
+	real*8 shcap                                            ! heat capacity of snow (constant)
+
+	real*8, allocatable :: temp(:,:)                        ! soil temperature
+	real, allocatable:: n_bnd_lay(:,:)                      ! number of boundaries between layer in soil
 	integer k0
 	
-        integer, allocatable :: snow_code(:),veg_code(:)     !input params
-	integer, allocatable :: geo_code(:),gt_zone_code(:)
-	real*8, allocatable  :: GRAD(:)
 
-	real*8 ,allocatable:: RES(:,:)
+    integer, allocatable :: snow_code(:),veg_code(:)        ! (not necccessary) required for runing in parallel
+	integer, allocatable :: geo_code(:),gt_zone_code(:)     ! (not necccessary) required for runing in parallel
+	real*8, allocatable  :: temp_grd(:)                     ! temprature gradient at the lower boundary
 
-	
-      END MODULE THERMO
+	real*8 ,allocatable:: RES(:,:)                          ! unified variable for the writing results into the file
 
-      MODULE GRDG
-	INTEGER NX,NY,NMY
-      	real*8,allocatable:: YM(:),HY(:)
-	INTEGER,allocatable:: NLX(:,:),MY(:),NUMSL(:)
-	real*8, allocatable :: XTI(:),YTI(:,:)!initial
-	integer :: nxti,nnpg
-      END MODULE GRDG
+end module thermo
 
-      MODULE AL
-      	integer,allocatable::NFRNT(:,:)
+module grd
+    integer, parameter :: n_lay=10                          ! total allowed number of soil layer
+    integer :: n_site                                       ! number of sites
+    integer :: n_grd                                        ! total number of grid points with depth (grid.txt)
+    real*8,allocatable:: zdepth(:),dz(:)                    ! vertical grid and distance between grid point 'zdepth(n_grd)'
+	integer,allocatable:: lay_id(:,:)                       ! layer index
+    integer :: m_grd                                        ! number of grid points to store in res file
+    integer,allocatable:: zdepth_id(:)                      ! index vector of stored grid points 'zdepth_id(m_grid)'
+    integer,allocatable:: NUMSL(:)
+	integer :: n_ini                                        ! number of vertical grid cells in init file
+    real*8, allocatable :: zdepth_ini(:),ztemp_ini(:,:)     ! depth and correspoding initial temperature (time=0) 'zdepth_ini(n_ini)'
+
+
+end module grd
+
+module alt
+    integer,allocatable::n_frz_frn(:,:)                     ! number of freezing front (e.g. when freezup is about to happened)
 	integer,allocatable::IMEAN(:)
-	real*8 ,allocatable::YFRNT(:,:,:)
-      END MODULE AL
+	real*8 ,allocatable::z_frz_frn(:,:,:)                   ! depth of the freezing front
+end module alt
 
 
-      PROGRAM permgis
-	USE BND
-      	USE THERMO
-      	USE GRDG
-	USE AL
-      implicit none
+program permgis
+	use bnd
+    use thermo
+    use grd
+	use alt
+
+    implicit none
 	
-      	EXTERNAL BOUND,GLKY,SUNWATER,GLC
+      	EXTERNAL futemp,ftcon,SUNWATER,fapp_hcap  ! all functions should start with letter 'f'
 
-      	real*8 UNWATER,DUNWATER,GLCQ,GLKY,GLC,BOUND,SLEVEL
-	real*8 RSNOW,SUNWATER
+      	real*8 funf_water,fdunf_water,fhcap,ftcon,fapp_hcap,futemp,SLEVEL
+	    real*8 RSNOW,SUNWATER
 
       	integer I,II,J,JJ,nout
       	integer NMEANS,NNN
@@ -100,7 +111,7 @@
       integer   my_rank  ! My process rank.
       integer   mype     ! The number of processes.
       integer   nx1,nx2  ! partitioning with dimensions nx2-nx1
-      integer   subset ! NX/mype
+      integer   subset ! n_site/mype
       integer   ierr
 !------------------------------------------------------------
 
@@ -118,16 +129,16 @@
 
 
 	
-	subset = nx/mype      ! subset length
+	subset = n_site/mype      ! subset length
 	nx1 = my_rank*subset+1
 	nx2 = (my_rank+1)*subset 
-	if ((my_rank+1).eq.mype) nx2=(my_rank+1-mype)*subset + nx
+	if ((my_rank+1).eq.mype) nx2=(my_rank+1-mype)*subset + n_site
 
-	allocate(RESTMP(NMY+3,NX),STAT=IERR)
+	allocate(RESTMP(m_grd+3,n_site),STAT=IERR)
       	allocate(YYFRNT(NMEAN),STAT=IERR)
-      	allocate(TTT(NX),STAT=IERR)
-      	allocate(TLET(NX),STAT=IERR)
-        allocate(RES(NMEAN,NMY+3),STAT=IERR)
+      	allocate(TTT(n_site),STAT=IERR)
+      	allocate(TLET(n_site),STAT=IERR)
+        allocate(RES(NMEAN,m_grd+3),STAT=IERR)
 !________________INITIALIZATION________________________
 
 !      NOUT=NMEAN*time_end+3
@@ -145,13 +156,13 @@
 	open(1,file=resultf1,STATUS='unknown')
 	open(2,file=MEANF1,STATUS='unknown')
       	open(3,file=startf,STATUS='unknown')
-	write(FMT1,'(A30,I0,A12)')'(1x,I10,1x,F12.3,2(1x,F16.12),',NMY,'(1x,F16.12))'
-	write(FMT2,'(A28,I0,A40)')'(1x,I10,1x,F12.3,2(1x,F8.3),',NMY,  '(1x,F8.3),(1x,F8.3,1x,F12.3),(1x,F12.3))'
+	write(FMT1,'(A30,I0,A12)')'(1x,I10,1x,F12.3,2(1x,F16.12),',m_grd,'(1x,F16.12))'
+	write(FMT2,'(A28,I0,A40)')'(1x,I10,1x,F12.3,2(1x,F8.3),',m_grd,  '(1x,F8.3),(1x,F8.3,1x,F12.3),(1x,F12.3))'
 
       	allocate(utemp_time_i(NOUT),STAT=IERR)
-	allocate(utemp_i(NOUT,NX),STAT=IERR)
-	allocate(snd_i(NOUT,NX),STAT=IERR)
-	allocate(stcon_i(NOUT,NX),STAT=IERR)
+	allocate(utemp_i(NOUT,n_site),STAT=IERR)
+	allocate(snd_i(NOUT,n_site),STAT=IERR)
+	allocate(stcon_i(NOUT,n_site),STAT=IERR)
 	
 !****************************************************************************	
       do I=1,NMEAN+2
@@ -160,9 +171,9 @@
       IMEAN=1
 
       do I=nx1,nx2
-	 if (lbound.EQ.2)GRAD(i)=GRAD(i)*ym(ny) 
+	 if (lbound.EQ.2)temp_grd(i)=temp_grd(i)*zdepth(n_grd) 
          do ii=1,NUMSL(i)
-	      TFPV(ii,i)=-(varnod(ii,i)/aclv(ii,i))**(1.d0/bclv(ii,i))
+	      temp_frz(ii,i)=-(vwc(ii,i)/a_coef(ii,i))**(1.d0/b_coef(ii,i))
 	 enddo
 	 call LININTRP(utemp_time,utemp(:,I),n_temp,utemp_time_i,utemp_i(:,I),NOUT)
       	 call LININTRP(snd_time,snd(:,I),n_snow,utemp_time_i,snd_i(:,I),NOUT)
@@ -177,13 +188,13 @@
 	  call save_results(I,TLET(I),TTT(I))
           6666  continue
 
-	  call stefan1D(U(I,:),NY,HY,TTT(I),TAUM,TMIN,STEP,I,NLX(I,:) &
-	    ,ITMAX,smooth_coef,unf_water_coef,lbound,GRAD(I),BOUND,GLC,GLKY,SUNWATER)
+	  call stefan1D(temp(I,:),n_grd,dz,TTT(I),TAUM,TMIN,STEP,I,lay_id(I,:) &
+	    ,ITMAX,smooth_coef,unf_water_coef,lbound,temp_grd(I),futemp,fapp_hcap,ftcon,SUNWATER)
 	
       !--------------------------------------------
       !--------------------------------------------
-!	    do j=1,ny			! WRITTING RESULTS
-!	       write(1,'3(f12.3)') U(I,j),ym(j),GLKY(U(I,j),I,J,tlet(I))
+!	    do j=1,n_grd			! WRITTING RESULTS
+!	       write(1,'3(f12.3)') temp(I,j),zdepth(j),ftcon(temp(I,j),I,J,tlet(I))
 !	    enddo
 	
 	
@@ -199,11 +210,11 @@
           endif
           if(TFIN.LT.TFINL.AND.TTT(nx1).GT.TFIN)then
 	    do II=1,NMEAN			! WRITTING RESULTS
-	       write(1,FMT1) I, (RES(II,JJ),JJ=1,NMY+3)
+	       write(1,FMT1) I, (RES(II,JJ),JJ=1,m_grd+3)
 	    enddo
 	  endif
-      	  do jj=1,nmy+3
-		  RESTMP(jj,i)=sum((res(:,JJ)))
+      	  do jj=1,m_grd+3
+		  RESTMP(jj,i)=sum((RES(:,JJ)))
 	  enddo
       enddo
       
@@ -212,8 +223,8 @@
            FREEZUP=-7777.D0
 	   FREEZUPD=FREEZUP
            do J=2,NMEAN
-              if((NFRNT(J,I)-NFRNT(J-1,I)).EQ.-2)then
-        	if(YFRNT(J-1,NFRNT(J-1,I),I).GE.frz_frn_min) FREEZUP=SNGL(RES(J,1))
+              if((n_frz_frn(J,I)-n_frz_frn(J-1,I)).EQ.-2)then
+        	if(z_frz_frn(J-1,n_frz_frn(J-1,I),I).GE.frz_frn_min) FREEZUP=SNGL(RES(J,1))
               endif
            enddo
 	   if(FREEZUP.GT.0.0)then
@@ -221,14 +232,14 @@
 	       if(FREEZUPD.EQ.0.0)FREEZUPD=REAL(NMEAN)
            endif
            NMEANS=NMEAN
-           YYFRNT=YFRNT(:,1,I)
+           YYFRNT=z_frz_frn(:,1,I)
 
   	   call save_results(I,TLET(I),TTT(I))
 
 	   call active_layer(I)
 
 	   !____WRITTING MEAN
-	   write(2,FMT2) I,(RESTMP(JJ,I)/DBLE(NMEAN),JJ=1,NMY+3), &
+	   write(2,FMT2) I,(RESTMP(JJ,I)/DBLE(NMEAN),JJ=1,m_grd+3), &
  		   YYFRNT(NMEAN),FREEZUP,FREEZUPD	
 	   do j=1,NOUT
 	     utemp_time_i(j)=TLET(nx1)+DBLE(j-1)*STEP
@@ -242,8 +253,8 @@
       rewind(3) ! -------------start file writting begin     
       write(3, * ) tini
 !      write(3, * ) TLET(1)
-      do J=1,NY
-         write (3,* ) ( U(II,J),II=nx1,nx2)
+      do J=1,n_grd
+         write (3,* ) ( temp(II,J),II=nx1,nx2)
       enddo     ! -------------start file writting end     
 
       TINIR=TTT(nx1)
@@ -252,13 +263,13 @@
 	close(1);close(2);close(3)
 !   call MPI_FINALIZE(ierr)
 
-END
+end ! end of main program
 
 subroutine initialize
-	USE BND
-      	USE THERMO
-      	USE GRDG
-	USE AL
+	USE bnd
+      	USE thermo
+      	USE grd
+	USE alt
 implicit none 
 
 	integer IREAD,ierr
@@ -306,15 +317,15 @@ implicit none
 	call filexist(cmdf)
 
       open(60,FILE=finput)
-   	read(60,*)NX
-        allocate(snow_code(nx),STAT=IERR)
-        allocate(veg_code(nx),STAT=IERR)
-        allocate(geo_code(nx),STAT=IERR)
-	allocate(gt_zone_code(nx),STAT=IERR)
-        allocate(GRAD(nx),STAT=IERR)
-        do i=1,nx
+   	read(60,*)n_site
+        allocate(snow_code(n_site),STAT=IERR)
+        allocate(veg_code(n_site),STAT=IERR)
+        allocate(geo_code(n_site),STAT=IERR)
+	    allocate(gt_zone_code(n_site),STAT=IERR)
+        allocate(temp_grd(n_site),STAT=IERR)
+        do i=1,n_site
           read(60,*) IREAD,snow_code(i),veg_code(i),geo_code(i),&
-	  gt_zone_code(i),GRAD(i)
+	  gt_zone_code(i),temp_grd(i)
         enddo
       close(60)
 !      print*, trim(finput),' has been read'
@@ -322,9 +333,9 @@ implicit none
       open(60,file=BOUNDF)
       	read(60,*)n_temp
 	allocate(utemp_time(n_temp),STAT=IERR)
-	allocate(utemp(n_temp,NX),STAT=IERR)
+	allocate(utemp(n_temp,n_site),STAT=IERR)
 	do i=1,n_temp
-          read(60,*) utemp_time(I),(utemp(I,J),J=1,NX)
+          read(60,*) utemp_time(I),(utemp(I,J),J=1,n_site)
 	enddo
       close(60)
 !      print*,trim(boundf),' has been read'
@@ -332,9 +343,9 @@ implicit none
       open(60,file=RSNOWF)
          read(60,*)n_stcon
 	allocate(stcon_time(n_stcon),STAT=IERR)
-	allocate(stcon(n_stcon,NX),STAT=IERR)
+	allocate(stcon(n_stcon,n_site),STAT=IERR)
 	do i=1,n_stcon
-      	   read(60,*) stcon_time(i),(stcon(i,J),J=1,NX)
+      	   read(60,*) stcon_time(i),(stcon(i,J),J=1,n_site)
 	enddo
       close(60)
 !      print*,trim(rsnowf),' has been read'
@@ -342,30 +353,30 @@ implicit none
       open(60,file=SNOWF)
       	read(60,*)n_snow
 	allocate(snd_time(n_snow),STAT=IERR)
-	allocate(snd(n_snow,NX),STAT=IERR)
+	allocate(snd(n_snow,n_site),STAT=IERR)
 	do I=1,n_snow
-          read(60,*) snd_time(i),(snd(i,J),J=1,NX)
+          read(60,*) snd_time(i),(snd(i,J),J=1,n_site)
 	enddo
       close(60)
 !      print*,trim(snowf),' has been read' 
 
       open(60,file=inif,action='read')
-        read(60,*)z_num,nxti!,TINI
-	allocate(XTI(NXTI),STAT=IERR)
-	allocate(YTI(NXTI,NX),STAT=IERR)
-        allocate(gtzone(NXTI,z_num+1),STAT=IERR)
+        read(60,*)z_num,n_ini!,TINI
+	allocate(zdepth_ini(n_ini),STAT=IERR)
+	allocate(ztemp_ini(n_ini,n_site),STAT=IERR)
+        allocate(gtzone(n_ini,z_num+1),STAT=IERR)
    	read(60,*)stdummy
-        do i=1,nxti
+        do i=1,n_ini
 	  read(60,*) (gtzone(i,j),j=1,z_num+1)
         enddo
       close(60)
 !      print*,trim(inif),'has been read'	
       
       TINI=utemp_time(1)
-      XTI(:)=gtzone(:,1)
-      do i=1,nx
+      zdepth_ini(:)=gtzone(:,1)
+      do i=1,n_site
 	k=gt_zone_code(i)
-	YTI(:,I)=gtzone(:,k+1)
+	ztemp_ini(:,I)=gtzone(:,k+1)
       enddo
 
       open(60,FILE=cmdf)
@@ -374,7 +385,7 @@ implicit none
       	read(60,*) time_beg,time_end
       	read(60,*) smooth_coef,unf_water_coef,itmax  !smoothing factor | unfrozen water parameter | max number of iterations
       	read(60,*) n_sec_day,NMEAN ! number of second in a day [sec] | number of time steps (in the example number of days in a year )
-        read(60,*) SLEV,n_frz_max
+        read(60,*) sea_level,n_frz_max
         read(60,*) frz_frn_min,frz_frn_max
       	read(60,*) sat_coef
       close(60)
@@ -382,32 +393,32 @@ implicit none
 
 
       open(60,file=cetkaf)
-	read(60,*)NY
-	allocate(YM(NY),STAT=IERR)
-      	do i=1,NY
-         read(60,*) YM(i)
+	read(60,*)n_grd
+	allocate(zdepth(n_grd),STAT=IERR)
+      	do i=1,n_grd
+         read(60,*) zdepth(i)
       	enddo
-	Read(60,*)NMY
-	allocate(MY(NMY),STAT=IERR)
-	do j=1,NMY
- 	   Read(60,*)MY(j)
+	Read(60,*)m_grd
+	allocate(zdepth_id(m_grd),STAT=IERR)
+	do j=1,m_grd
+ 	   Read(60,*)zdepth_id(j)
 	enddo
 	close(60)
 !      print*,trim(cetkaf),' has been read'
 
-! note: that all max NUMSL layers has to read ro it will a give segmantation error
-      NNPG=10!MAXVAL(NUMSL)      
+! note: that all max NUMSL layers has to be read or it will a give segmantation error
+!      n_lay=10!MAXVAL(NUMSL)
 !----------------------------------------------------      
       open (60, file=fvegetation)
 	read(60,*) vln ! reads numbers of  classes
-	allocate(A1(NNPG,vln),STAT=IERR) ! varnod
-	allocate(A2(NNPG,vln),STAT=IERR) ! aclv
-	allocate(A3(NNPG,vln),STAT=IERR) ! bclv
-	allocate(A4(NNPG,vln),STAT=IERR) ! capfr
-	allocate(A5(NNPG,vln),STAT=IERR)  !capth 
-	allocate(A6(NNPG,vln),STAT=IERR)  !xkfr
-	allocate(A7(NNPG,vln),STAT=IERR)  !xkth
-	allocate(A8(vln,NNPG),STAT=IERR)  !bot_cond
+	allocate(A1(n_lay,vln),STAT=IERR) ! vwc
+	allocate(A2(n_lay,vln),STAT=IERR) ! a_coef
+	allocate(A3(n_lay,vln),STAT=IERR) ! b_coef
+	allocate(A4(n_lay,vln),STAT=IERR) ! hcap_frz
+	allocate(A5(n_lay,vln),STAT=IERR)  !hcap_thw 
+	allocate(A6(n_lay,vln),STAT=IERR)  !tcon_frz
+	allocate(A7(n_lay,vln),STAT=IERR)  !tcon_thw
+	allocate(A8(vln,n_lay),STAT=IERR)  !bot_cond
 	allocate(veg_class(vln),STAT=IERR) !veg_class
 	allocate(num_vl(vln),STAT=IERR)  !num_vl number of vegetation layers
 	
@@ -423,14 +434,14 @@ implicit none
       
       open (60, file='in/geo.txt')
 	read(60,*) gln ! reads numbers of  classes
-	allocate(B1(NNPG,gln),STAT=IERR) ! varnod
-	allocate(B2(NNPG,gln),STAT=IERR) ! aclv
-	allocate(B3(NNPG,gln),STAT=IERR) ! bclv
-	allocate(B4(NNPG,gln),STAT=IERR) ! capfr
-	allocate(B5(NNPG,gln),STAT=IERR)  !capth 
-	allocate(B6(NNPG,gln),STAT=IERR)  !xkfr
-	allocate(B7(NNPG,gln),STAT=IERR)  !xkth
-	allocate(B8(gln,NNPG),STAT=IERR)  !bot_cond
+	allocate(B1(n_lay,gln),STAT=IERR) ! vwc
+	allocate(B2(n_lay,gln),STAT=IERR) ! a_coef
+	allocate(B3(n_lay,gln),STAT=IERR) ! b_coef
+	allocate(B4(n_lay,gln),STAT=IERR) ! hcap_frz
+	allocate(B5(n_lay,gln),STAT=IERR)  !hcap_thw 
+	allocate(B6(n_lay,gln),STAT=IERR)  !tcon_frz
+	allocate(B7(n_lay,gln),STAT=IERR)  !tcon_thw
+	allocate(B8(gln,n_lay),STAT=IERR)  !bot_cond
 	allocate(geo_class(gln),STAT=IERR) !geo_class
 	allocate(num_gl(gln),STAT=IERR)  !num_vl number of lithologic layers
 	do I = 1,gln
@@ -444,90 +455,90 @@ implicit none
 !      print*,trim(fgeology),' has been read'
 
 
-      allocate(VARNOD(NNPG,nx),STAT=IERR)
-      allocate(ACLV(NNPG,nx),STAT=IERR)
-      allocate(BCLV(NNPG,nx),STAT=IERR)
-      allocate(EE(NNPG,nx),STAT=IERR)
-      allocate(CAPFR(NNPG,nx),STAT=IERR)
-      allocate(CAPTH(NNPG,nx),STAT=IERR)
-      allocate(XKFR(NNPG,nx),STAT=IERR)
-      allocate(XKTH(NNPG,nx),STAT=IERR)
-      allocate(numsl(nx),STAT=IERR)
-      allocate(YYS(nx,NNPG+1),STAT=IERR)
+      allocate(vwc(n_lay,n_site),STAT=IERR)
+      allocate(a_coef(n_lay,n_site),STAT=IERR)
+      allocate(b_coef(n_lay,n_site),STAT=IERR)
+      allocate(EE(n_lay,n_site),STAT=IERR)
+      allocate(hcap_frz(n_lay,n_site),STAT=IERR)
+      allocate(hcap_thw(n_lay,n_site),STAT=IERR)
+      allocate(tcon_frz(n_lay,n_site),STAT=IERR)
+      allocate(tcon_thw(n_lay,n_site),STAT=IERR)
+      allocate(numsl(n_site),STAT=IERR)
+      allocate(n_bnd_lay(n_site,n_lay+1),STAT=IERR)
 
-      do i = 1,nx
+      do i = 1,n_site
 	layer_thick=0
-	YYS(i,1)=layer_thick
+	n_bnd_lay(i,1)=layer_thick
 	  	layer_thick=0
-	YYS(i,1)=layer_thick
+	n_bnd_lay(i,1)=layer_thick
  	do j=1,num_vl(veg_code(i))
-	   VARNOD(J,I)=A1(j,veg_code(i));
-	   ACLV(J,I)=A2(j,veg_code(i));
-	   BCLV(J,I)=A3(j,veg_code(i));
-	   CAPTH(J,I)=A4(j,veg_code(i));
-	   CAPFR(J,I)=A5(j,veg_code(i));
-	   XKTH(J,I)=A6(j,veg_code(i));
-	   XKFR(J,I)=A7(j,veg_code(i));
+	   vwc(J,I)=A1(j,veg_code(i));
+	   a_coef(J,I)=A2(j,veg_code(i));
+	   b_coef(J,I)=A3(j,veg_code(i));
+	   hcap_thw(J,I)=A4(j,veg_code(i));
+	   hcap_frz(J,I)=A5(j,veg_code(i));
+	   tcon_thw(J,I)=A6(j,veg_code(i));
+	   tcon_frz(J,I)=A7(j,veg_code(i));
 	   if (j.eq.1) then 
 	      layer_thick=A8(veg_code(i),j)
 	   else
 	      layer_thick=layer_thick+A8(veg_code(i),j);
 	   endif
-	   YYS(i,j+1)=layer_thick
+	   n_bnd_lay(i,j+1)=layer_thick
 	   EE(J,I)=0
-!	     write(*,'(3(f8.3),2(f12.1),3(f8.3))') VARNOD(J,I),ACLV(J,I),BCLV(J,I), &
-!		  CAPTH(J,I),CAPFR(J,I),XKTH(J,I),XKFR(J,I),YYS(i,j+1)
+!	     write(*,'(3(f8.3),2(f12.1),3(f8.3))') vwc(J,I),a_coef(J,I),b_coef(J,I), &
+!		  hcap_thw(J,I),hcap_frz(J,I),tcon_thw(J,I),tcon_frz(J,I),n_bnd_lay(i,j+1)
         enddo
 	k=1
 	NUMSL(I)=num_vl(veg_code(i))+num_gl(geo_code(i))
  	do j=num_vl(veg_code(i))+1,NUMSL(I)
-	   VARNOD(J,I)=B1(k,geo_code(i));
-	   ACLV(J,I)=B2(k,geo_code(i));
-	   BCLV(J,I)=B3(k,geo_code(i));
-	   CAPTH(J,I)=B4(k,geo_code(i));
-	   CAPFR(J,I)=B5(k,geo_code(i));
-	   XKTH(J,I)=B6(k,geo_code(i));
-	   XKFR(J,I)=B7(k,geo_code(i));
+	   vwc(J,I)=B1(k,geo_code(i));
+	   a_coef(J,I)=B2(k,geo_code(i));
+	   b_coef(J,I)=B3(k,geo_code(i));
+	   hcap_thw(J,I)=B4(k,geo_code(i));
+	   hcap_frz(J,I)=B5(k,geo_code(i));
+	   tcon_thw(J,I)=B6(k,geo_code(i));
+	   tcon_frz(J,I)=B7(k,geo_code(i));
 	   EE(J,I)=0
            layer_thick=layer_thick+B8(geo_code(i),k);
-	   YYS(i,j+1)=layer_thick!B8(geo_code(i),j)
+	   n_bnd_lay(i,j+1)=layer_thick!B8(geo_code(i),j)
 	   k=k+1
         enddo
-	   YYS(i,NUMSL(I)+1)=YM(NY)
+	   n_bnd_lay(i,NUMSL(I)+1)=zdepth(n_grd)
       enddo
 
-	csnow=840000.0
+	shcap=840000.0
 	lbound=2 !1 Dirichlet, 2 heat flux condition at the bottom boundary
 
-	allocate(Y(NY),STAT=IERR)
-	allocate(HY(NY),STAT=IERR)
-	glm=ym(ny) 
-	Y=YM/GLM
-	do i=2,ny
-	 hy(i)=y(i)-y(i-1)
+	allocate(Y(n_grd),STAT=IERR)
+	allocate(dz(n_grd),STAT=IERR)
+	glm=zdepth(n_grd) 
+	Y=zdepth/GLM
+	do i=2,n_grd
+	 dz(i)=y(i)-y(i-1)
 	enddo
 	HCSCALE=glm*glm/n_sec_day
-	CAPFR=CAPFR*HCSCALE
-	CAPTH=CAPTH*HCSCALE
-  	CSNOW=CSNOW*HCSCALE
-	QPHASE=HCSCALE*333.2*1.D+6
+	hcap_frz=hcap_frz*HCSCALE
+	hcap_thw=hcap_thw*HCSCALE
+  	shcap=shcap*HCSCALE
+	L_fus=HCSCALE*333.2*1.D+6
 
-	allocate(U(NX,NY),STAT=IERR)
-	allocate(NLX(NX,NY),STAT=IERR)
-	allocate(IMEAN(NX),STAT=IERR)
-	allocate(YFRNT(NMEAN,n_frz_max,NX),STAT=IERR)
-      	allocate(NFRNT(NMEAN,NX),STAT=IERR)
-	allocate(TFPV(NNPG,nx),STAT=IERR)	
+	allocate(temp(n_site,n_grd),STAT=IERR)
+	allocate(lay_id(n_site,n_grd),STAT=IERR)
+	allocate(IMEAN(n_site),STAT=IERR)
+	allocate(z_frz_frn(NMEAN,n_frz_max,n_site),STAT=IERR)
+      	allocate(n_frz_frn(NMEAN,n_site),STAT=IERR)
+	allocate(temp_frz(n_lay,n_site),STAT=IERR)	
 	
-	call  NSLOJS(NNPG,NUMSL,NX,NY,YM,YYS,NLX)
+	call  NSLOJS(n_lay,NUMSL,n_site,n_grd,zdepth,n_bnd_lay,lay_id)
 	
 
 end subroutine initialize
 
 subroutine init_cond(q,curr,first,last)
-	USE BND
-      	USE THERMO
-      	USE GRDG
+	USE bnd
+      	USE thermo
+      	USE grd
 implicit none
    integer q,curr,first,last
    integer i,j
@@ -535,15 +546,15 @@ implicit none
    
 	if(q.EQ.1)then !restart=1 means reading initial data from 
           do I=first,last
-    	    call LININTRP(XTI,YTI(:,I),NXTI,YM,U(I,:),NY)
+    	    call LININTRP(zdepth_ini,ztemp_ini(:,I),n_ini,zdepth,temp(I,:),n_grd)
 	  enddo
 	elseif(restart.EQ.0)then  			!restart=0 enbales spinup
      	  write(INIF,'(A11,I3.3,A4)') 'dump/start_',curr+1,'.txt'
 !	  write(INIF,'(A9,I3.3,A4)') 'in/start_',my_rank+1,'.txt'
       	  open(60,file=INIF,action='READ')
 	  read(60,*)TINI
-	  do J=1,NY
-      		read (60,* ) ( U(i,j),i=first,last)
+	  do J=1,n_grd
+      		read (60,* ) ( temp(i,j),i=first,last)
 	  enddo
 	  close(60)
 	endif
@@ -551,37 +562,37 @@ implicit none
 end subroutine init_cond
 
 subroutine active_layer(k)
-	USE BND
-      	USE THERMO
-      	USE GRDG
-	USE AL
+	USE bnd
+      	USE thermo
+      	USE grd
+	USE alt
 implicit none
 
 integer :: k,j,jj
 real*8 GA,GB,YFRON,GX,GY
 real*8 SUNWATER
 
-	  YFRNT(IMEAN(k),:,k)=SLEV
-	  NFRNT(IMEAN(k),k)=0
-	  do 1329 JJ=1,NY-1
-             J=NY-JJ
-	     if (YM(J).GE.SLEV.AND.YM(J+1).LE.frz_frn_max)then
-               GA=SUNWATER(U(k,J),NLX(k,J),k)
-               GB=SUNWATER(U(k,J+1),NLX(k,J+1),k)
+	  z_frz_frn(IMEAN(k),:,k)=sea_level
+	  n_frz_frn(IMEAN(k),k)=0
+	  do 1329 JJ=1,n_grd-1
+             J=n_grd-JJ
+	     if (zdepth(J).GE.sea_level.AND.zdepth(J+1).LE.frz_frn_max)then
+               GA=SUNWATER(temp(k,J),lay_id(k,J),k)
+               GB=SUNWATER(temp(k,J+1),lay_id(k,J+1),k)
         	  if((GA-sat_coef)*(GB-sat_coef).LE.0.D0) then
-        	     GY=(GA-GB)/(YM(J)-YM(J+1))
-        	     GX=(GA+GB-GY*(YM(J)+YM(J+1)))/2.D0
+        	     GY=(GA-GB)/(zdepth(J)-zdepth(J+1))
+        	     GX=(GA+GB-GY*(zdepth(J)+zdepth(J+1)))/2.D0
         	     if(GY.EQ.0.D0) then
-                       YFRON=(YM(J)+YM(J+1))/2.D0
+                       YFRON=(zdepth(J)+zdepth(J+1))/2.D0
         	     else
                        YFRON=(sat_coef-GX)/GY
         	     endif
         	  else
         	     GOTO 1329
         	  endif
-        	  if(NFRNT(IMEAN(k),k).LT.n_frz_max)then
-        	    NFRNT(IMEAN(k),k)=NFRNT(IMEAN(k),k)+1
-        	    YFRNT(IMEAN(k),NFRNT(IMEAN(k),k),k)=YFRON
+        	  if(n_frz_frn(IMEAN(k),k).LT.n_frz_max)then
+        	    n_frz_frn(IMEAN(k),k)=n_frz_frn(IMEAN(k),k)+1
+        	    z_frz_frn(IMEAN(k),n_frz_frn(IMEAN(k),k),k)=YFRON
         	  endif
 	     endif
 1329      CONTINUE
@@ -589,19 +600,19 @@ real*8 SUNWATER
 end subroutine active_layer
 
 subroutine save_results(k,time1,time2)
-USE THERMO
-USE GRDG
-USE AL
+USE thermo
+USE grd
+USE alt
 implicit none
 	integer :: k,j
      	real*8  :: time1,time2
-      	real*8  :: BOUND,SLEVEL
+      	real*8  :: futemp,SLEVEL
 
 	  RES(IMEAN(k),1)=time1
-          RES(IMEAN(k),2)=bound(time2,k)
+          RES(IMEAN(k),2)=futemp(time2,k)
           RES(IMEAN(k),3)=slevel(k,time2)
-	  do  J=1,NMY
-            RES(IMEAN(k),J+3)=U(k,MY(J))
+	  do  J=1,m_grd
+            RES(IMEAN(k),J+3)=temp(k,zdepth_id(J))
 	  enddo
 
 end subroutine save_results
@@ -609,36 +620,36 @@ end subroutine save_results
 !________________________________________________
 !__________________FUNCTIONS_____________________
 !________________________________________________
-      REAL*8 FUNCTION UNWATER(V,NNN,I)
-	USE THERMO
+      REAL*8 FUNCTION funf_water(V,NNN,I)
+	USE thermo
         IMPLICIT REAL*8(A-H,O-Z)
      
-	TFP=TFPV(NNN,I) ! change I to k0 everywhere except TFP
+	TFP=temp_frz(NNN,I) ! change I to k0 everywhere except TFP
 	E=EE(NNN,I)
-    	X=VARNOD(NNN,I)
-      	ACL=ACLV(NNN,I)
-      	BCL=BCLV(NNN,I)
+    	X=vwc(NNN,I)
+      	ACL=a_coef(NNN,I)
+      	BCL=b_coef(NNN,I)
 	
         IF(V.LE.TFP-E)THEN
-	       UNWATER=ACL*((DABS(V))**BCL)
+	       funf_water=ACL*((DABS(V))**BCL)
 	ELSEIF(V.GT.TFP)THEN
-	       UNWATER=X
+	       funf_water=X
       	ELSE
-	       UNWATER=ACL*((DABS(TFP-E))**BCL)
-	       UNWATER=UNWATER+(X-UNWATER)*(V+E-TFP)/E
+	       funf_water=ACL*((DABS(TFP-E))**BCL)
+	       funf_water=funf_water+(X-funf_water)*(V+E-TFP)/E
 	ENDIF
       RETURN
       END
 !-----------------------------------------------
       REAL*8 FUNCTION SUNWATER(V,NNN,I)!Saturated unforzen water
-      USE THERMO
+      USE thermo
       IMPLICIT REAL*8(A-H,O-Z)
       
-	TFP=TFPV(NNN,I)
+	TFP=temp_frz(NNN,I)
 	E=EE(NNN,I)
-    	X=VARNOD(NNN,I)
-      	ACL=ACLV(NNN,I)
-      	BCL=BCLV(NNN,I)
+    	X=vwc(NNN,I)
+      	ACL=a_coef(NNN,I)
+      	BCL=b_coef(NNN,I)
         IF(V.LE.TFP-E)THEN
            SUNWATER=ACL*((DABS(V))**BCL)
         ELSEIF(V.GT.TFP)THEN
@@ -651,33 +662,33 @@ end subroutine save_results
       RETURN
       END
 !-----------------------------------------------
-      REAL*8 FUNCTION DUNWATER(V,NNN,I)
-      USE THERMO
+      REAL*8 FUNCTION fdunf_water(V,NNN,I)
+      USE thermo
       IMPLICIT REAL*8(A-H,O-Z)
 
-	TFP=TFPV(NNN,I)
+	TFP=temp_frz(NNN,I)
 	E=EE(NNN,I)
-	X=VARNOD(NNN,I)
-	ACL=ACLV(NNN,I)
-	BCL=BCLV(NNN,I)
+	X=vwc(NNN,I)
+	ACL=a_coef(NNN,I)
+	BCL=b_coef(NNN,I)
 
 	IF(V.LE.TFP-E)THEN
-		DUNWATER=-BCL*ACL*((DABS(V))**(BCL-1.0D0))
+		fdunf_water=-BCL*ACL*((DABS(V))**(BCL-1.0D0))
 	ELSEIF(V.GT.TFP)THEN
-      		DUNWATER=0.0D0
+      		fdunf_water=0.0D0
 	ELSE
-		DUNWATER=ACL*((DABS(TFP-E))**BCL)
-		DUNWATER=(X-DUNWATER)/E
+		fdunf_water=ACL*((DABS(TFP-E))**BCL)
+		fdunf_water=(X-fdunf_water)/E
 	ENDIF
       RETURN
       END
 !----------------------------------------
-      REAL*8 FUNCTION BOUND(T,I)
-      USE BND
+      REAL*8 FUNCTION futemp(T,I)
+      USE bnd
       REAL*8 T
       INTEGER I,II
 	II=1+IDINT((T-TINIR)/STEP)
-	BOUND=utemp_i(II,I)+(T+TINI-utemp_time_i(II)) &
+	futemp=utemp_i(II,I)+(T+TINI-utemp_time_i(II)) &
 	  *(utemp_i(II+1,I)-utemp_i(II,I))/(utemp_time_i(II+1)-utemp_time_i(II))
       RETURN
       END
@@ -724,20 +735,20 @@ SUBROUTINE LININTRP(XIN,YIN,NIN,XOUT,YOUT,NOUT)
       RETURN
       END
 !----------------------------------------
-      SUBROUTINE NSLOJS(NNPG,NUMSL,NX,NY,YM,YYS,NLX)
+      SUBROUTINE NSLOJS(n_lay,NUMSL,n_site,n_grd,zdepth,n_bnd_lay,lay_id)
 	!assigns correspond layer to the point with with depth
 	!starting from surface to the bottom
-        INTEGER NX,NY,NNPG,NLX,NUMSL
-	DIMENSION NLX(NX,NY),NUMSL(NX)
-	REAL*8 YM(ny)
-	real YYS(NX,NNPG+1)
+        INTEGER n_site,n_grd,n_lay,lay_id,NUMSL
+	DIMENSION lay_id(n_site,n_grd),NUMSL(n_site)
+	REAL*8 zdepth(n_grd)
+	real n_bnd_lay(n_site,n_lay+1)
 
-      do J=1,NX
-	do 6 I=1,NY
-	NLX(J,I)=NUMSL(J)
+      do J=1,n_site
+	do 6 I=1,n_grd
+	lay_id(J,I)=NUMSL(J)
       	  do K=1,NUMSL(J)-1
-             IF ( YYS(J,K).LE.YM(I).AND.YM(I).LT.YYS(J,K+1))THEN
-	     NLX(J,I)=K
+             IF ( n_bnd_lay(J,K).LE.zdepth(I).AND.zdepth(I).LT.n_bnd_lay(J,K+1))THEN
+	     lay_id(J,I)=K
 	     GOTO 6
 	  ENDIF
 	  enddo
@@ -747,7 +758,7 @@ SUBROUTINE LININTRP(XIN,YIN,NIN,XOUT,YOUT,NOUT)
       END
 !----------------------------------------
       REAL*8 FUNCTION SLEVEL(I,t)
-	USE BND
+	USE bnd
 	REAL*8 T
 	INTEGER I,II
       II=1+IDINT((T-TINIR)/STEP)
@@ -757,108 +768,108 @@ SUBROUTINE LININTRP(XIN,YIN,NIN,XOUT,YOUT,NOUT)
       END
 !-----------------------------------------------
 
-      REAL*8 FUNCTION GLKY(V,I,J,TLET)
+      REAL*8 FUNCTION ftcon(V,I,J,TLET)
       use bnd
-      USE GRDG
-      USE THERMO
+      USE grd
+      USE thermo
       IMPLICIT REAL*8(A-H,O-Z)
       integer :: II
       
-       XSNOW=SLEV
-       dsnow=SLEV-slevel(i,tlet)
-       NS=NLX(I,J)
-       IF(YM(j).le.dsnow)THEN  		!atmosphere
-	      GLKY=1.d4
-       ELSEIF (YM(j).Lt.XSNOW)THEN	!snow
+       XSNOW=sea_level
+       dsnow=sea_level-slevel(i,tlet)
+       NS=lay_id(I,J)
+       IF(zdepth(j).le.dsnow)THEN  		!atmosphere
+	      ftcon=1.d4
+       ELSEIF (zdepth(j).Lt.XSNOW)THEN	!snow
               II=1+IDINT((tlet-TINIR)/STEP)
-	      glky=stcon_i(II,I)+(tlet+TINI-utemp_time_i(II))* &
+	      ftcon=stcon_i(II,I)+(tlet+TINI-utemp_time_i(II))* &
  			(stcon_i(II+1,I)-stcon_i(II,I))/(utemp_time_i(II+1)-utemp_time_i(II))
        ELSE				!ground
-              WC=UNWATER(V,NS,I)/VARNOD(NS,I)
-	      GLKY=(XKTH(NS,I)**WC)*(XKFR(NS,I)**(1.0-WC))
+              WC=funf_water(V,NS,I)/vwc(NS,I)
+	      ftcon=(tcon_thw(NS,I)**WC)*(tcon_frz(NS,I)**(1.0-WC))
        ENDIF
    	RETURN
       END
 !----------------------------------------
-	REAL*8 FUNCTION GLCQ(V,NNUS,I)
-	USE THERMO
+	REAL*8 FUNCTION fhcap(V,NNUS,I)
+	USE thermo
 	IMPLICIT REAL*8(A-H,O-Z)
 	DIMENSION NNUS(2),V(2),CL(2)
         
 	H=1/(V(1)-V(2)) 
         IF(DABS(V(1)-V(2)).LT.1.D-6) THEN
-           GLCQ=0.5d0*(DUNWATER(V(1),NNUS(1),I)+DUNWATER(V(2),NNUS(2),I))
+           fhcap=0.5d0*(fdunf_water(V(1),NNUS(1),I)+fdunf_water(V(2),NNUS(2),I))
 	else
 	  if (nnus(1).ne.nnus(2))THEN
-      	   GLCQ=0.5D0*( H*(UNWATER(V(1),NNUS(1),I)-UNWATER(V(2),NNUS(1),I))+ &
-	   	        H*(UNWATER(V(1),NNUS(2),I)-UNWATER(V(2),NNUS(2),I))    )
+      	   fhcap=0.5D0*( H*(funf_water(V(1),NNUS(1),I)-funf_water(V(2),NNUS(1),I))+ &
+	   	        H*(funf_water(V(1),NNUS(2),I)-funf_water(V(2),NNUS(2),I))    )
 	  ELSE
-	   GLCQ=H*(UNWATER(V(1),NNUS(1),I)-UNWATER(V(2),NNUS(2),I))
+	   fhcap=H*(funf_water(V(1),NNUS(1),I)-funf_water(V(2),NNUS(2),I))
           ENDIF
 	endif
-        GLCQ=QPHASE*DABS(GLCQ)
+        fhcap=L_fus*DABS(fhcap)
       RETURN
-      END FUNCTION GLCQ
+      END FUNCTION fhcap
 !----------------------------------------
 !----------------------------------------
-      REAL*8 FUNCTION GLC(V,I,J)       ! Apparent heat capacity
-      USE THERMO
-      USE GRDG
+      REAL*8 FUNCTION fapp_hcap(V,I,J)       ! Apparent heat capacity
+      USE thermo
+      USE grd
       IMPLICIT REAL*8(A-H,O-Z)
-      DIMENSION V(NY),WW(2),NN(2)
-	NS=NLX(I,J)
-        XSNOW=SLEV
-	if(YM(J).lE.XSNOW)then
- 	  GLC=CSNOW            ! heat capacity for snow
+      DIMENSION V(n_grd),WW(2),NN(2)
+	NS=lay_id(I,J)
+        XSNOW=sea_level
+	if(zdepth(J).lE.XSNOW)then
+ 	  fapp_hcap=shcap            ! heat capacity for snow
 	else		    
-	   WC=UNWATER(V(J),NS,I)/VARNOD(NS,I)
-	   GLC=CAPTH(NS,I)*WC+CAPFR(NS,I)*(1.0-WC)
-!	   GLC=GLCUW(V(J),NS,I)	   
-!             write(2,*)GLC
-	   if(J.GT.(1).AND.J.LT.NY)then
+	   WC=funf_water(V(J),NS,I)/vwc(NS,I)
+	   fapp_hcap=hcap_thw(NS,I)*WC+hcap_frz(NS,I)*(1.0-WC)
+!	   fapp_hcap=GLCUW(V(J),NS,I)	   
+!             write(2,*)fapp_hcap
+	   if(J.GT.(1).AND.J.LT.n_grd)then
 	       WW(1)=(V(J-1)+V(J))/2.D0
-	       NN(1)=NLX(I,J-1)
+	       NN(1)=lay_id(I,J-1)
 	       WW(2)=V(J)
-	       NN(2)=NLX(I,J)
-	       GLC=GLC+GLCQ(WW,NN,I)*HY(J)/(HY(J+1)+HY(J))
+	       NN(2)=lay_id(I,J)
+	       fapp_hcap=fapp_hcap+fhcap(WW,NN,I)*dz(J)/(dz(J+1)+dz(J))
 	       WW(1)=V(J)
-	       NN(1)=NLX(I,J)
+	       NN(1)=lay_id(I,J)
 	       WW(2)=(V(J+1)+V(J))/2.D0
-    	       NN(2)=NLX(I,J+1)
-	       GLC=GLC+GLCQ(WW,NN,I)*HY(J+1)/(HY(J+1)+HY(J))
+    	       NN(2)=lay_id(I,J+1)
+	       fapp_hcap=fapp_hcap+fhcap(WW,NN,I)*dz(J+1)/(dz(J+1)+dz(J))
 	    elseif(J.EQ.1)then
 	       WW(1)=V(J)
-	       NN(1)=NLX(I,J)
+	       NN(1)=lay_id(I,J)
 	       WW(2)=(V(J+1)+V(J))/2.D0
-    	       NN(2)=NLX(I,J+1)
-	       GLC=GLC+GLCQ(WW,NN,I)
-	    elseif(J.EQ.NY)then
+    	       NN(2)=lay_id(I,J+1)
+	       fapp_hcap=fapp_hcap+fhcap(WW,NN,I)
+	    elseif(J.EQ.n_grd)then
 	       WW(1)=(V(J-1)+V(J))/2.D0
-	       NN(1)=NLX(I,J-1)
+	       NN(1)=lay_id(I,J-1)
 	       WW(2)=V(J)
-    	       NN(2)=NLX(I,J)
-	       GLC=GLC+GLCQ(WW,NN,I)
+    	       NN(2)=lay_id(I,J)
+	       fapp_hcap=fapp_hcap+fhcap(WW,NN,I)
 	    endif
 	 endif
       RETURN
       END
 !-------------------------------------------------------
- SUBROUTINE stefan1D(UU,NY,HY,TTT,TAUM,TMIN,STEP,I,NMS, &
- ITMAX,smooth_coef,unf_water_coef,NBOUND,flux,BOUND,GLC,GLKY,SUNWATER)
-	USE THERMO
+ SUBROUTINE stefan1D(UU,n_grd,dz,TTT,TAUM,TMIN,STEP,I,NMS, &
+ ITMAX,smooth_coef,unf_water_coef,NBOUND,flux,futemp,fapp_hcap,ftcon,SUNWATER)
+	USE thermo
       IMPLICIT NONE
-      INTEGER NMS,NY,ITMAX,NBOUND,I
-      DIMENSION NMS(NY)
-      real*8 HY(NY),UU(NY)
+      INTEGER NMS,n_grd,ITMAX,NBOUND,I
+      DIMENSION NMS(n_grd)
+      real*8 dz(n_grd),UU(n_grd)
       REAL*8 TTT,TAUM,TINI,TMIN,STEP
       REAL*8 smooth_coef,unf_water_coef
-      REAL*8 BOUND,flux,GLC,GLKY,SUNWATER
+      REAL*8 futemp,flux,fapp_hcap,ftcon,SUNWATER
 
       INTEGER J,IT
       REAL*8 RAB1,RAB2,AKAPA2,AMU2,Q2
       REAL*8 A,B,C,D
-      REAL*8 ALF(NY),BET(NY)
-      real*8 U1(NY),U2(NY)
+      REAL*8 ALF(n_grd),BET(n_grd)
+      real*8 U1(n_grd),U2(n_grd)
       REAL*8 T1,T,TLET,TAU
       REAL*8 EEY,EEY1,abs1,abs2
       REAL TAU1
@@ -867,51 +878,51 @@ SUBROUTINE LININTRP(XIN,YIN,NIN,XOUT,YOUT,NOUT)
       T1=TTT
       TAU1=-1.0
       TAU=TAUM
-      UU=U(i,:)
+      UU=temp(i,:)
 64    continue
       T=T1+TAU
       TLET=T
       U1=UU
       IT=1
       ALF(2)=0.D0
-      BET(2)=BOUND(TLET,I)
+      BET(2)=futemp(TLET,I)
 22    continue
       IF(IT.GT.ITMAX) THEN
 	TAU=TAU/2.D0
 	TAU1=-1.0
 	GOTO 64
       ENDIF
-      DO J=2,NY-1
-        D=GLC(U1,I,J)/TAU
-        A=2.D0*GLKY(U1(J),I,J,TLET)/(HY(J)*(HY(J)+HY(J+1)))
-        B=2.D0*GLKY(U1(J+1),I,J+1,TLET)/(HY(J+1)*(HY(J)+HY(J+1)))
+      DO J=2,n_grd-1
+        D=fapp_hcap(U1,I,J)/TAU
+        A=2.D0*ftcon(U1(J),I,J,TLET)/(dz(J)*(dz(J)+dz(J+1)))
+        B=2.D0*ftcon(U1(J+1),I,J+1,TLET)/(dz(J+1)*(dz(J)+dz(J+1)))
         C=A+B+D
         ALF(J+1)=B/(C-A*ALF(J))
         BET(J+1)=(A*BET(J)+D*UU(J))/(C-A*ALF(J))
       ENDDO
       
-      RAB1=GLKY(U1(NY),I,NY,TLET)
-      RAB2=GLC(U1,I,NY)
-      AKAPA2=2.D0*RAB1/(((RAB2*HY(NY)*HY(NY))/TAU+2.D0*RAB1))
+      RAB1=ftcon(U1(n_grd),I,n_grd,TLET)
+      RAB2=fapp_hcap(U1,I,n_grd)
+      AKAPA2=2.D0*RAB1/(((RAB2*dz(n_grd)*dz(n_grd))/TAU+2.D0*RAB1))
       Q2=RAB1*flux
-      AMU2=(UU(NY)*RAB2/TAU+2.D0*Q2/HY(NY))/(RAB2/TAU+2.D0*RAB1 &
-	 /HY(NY)**2.D0)
+      AMU2=(UU(n_grd)*RAB2/TAU+2.D0*Q2/dz(n_grd))/(RAB2/TAU+2.D0*RAB1 &
+	 /dz(n_grd)**2.D0)
       IF(DABS(AKAPA2)>1.D0) then 
         PRINT*,'YOU CAN NOT APPLY PROGONKA ON OY - CHANGE STEPS'
         print*,rab1,rab2,akapa2
         STOP
       endif
       IF (NBOUND.EQ.2)THEN
-       U2(NY)=(AMU2+AKAPA2*BET(NY))/(1.D0-ALF(NY)*AKAPA2)
+       U2(n_grd)=(AMU2+AKAPA2*BET(n_grd))/(1.D0-ALF(n_grd)*AKAPA2)
       ELSE
-       U2(NY)=flux
+       U2(n_grd)=flux
       ENDIF
-      do J=1,NY-1
-        U2(NY-J)=ALF(NY-J+1)*U2(NY-J+1)+BET(NY-J+1)
+      do J=1,n_grd-1
+        U2(n_grd-J)=ALF(n_grd-J+1)*U2(n_grd-J+1)+BET(n_grd-J+1)
       enddo
 
       IF(TAU>TMIN) then !GOTO 11
-	do J=1,NY
+	do J=1,n_grd
 	  EEY=SUNWATER(U2(J),NMS(J),I)
 	  EEY1=SUNWATER(U1(J),NMS(J),I)
 	  abs1=DABS(EEY-EEY1)
