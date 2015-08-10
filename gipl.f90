@@ -5,31 +5,32 @@
 ! This version is maintained by E. Jafarov at INSTAAR, CU Boulder
 ! Please site Jafarov et al., (2012) work when using it.
 module bnd
-    integer n_temp                                          ! number of upper boundary points for temperature (input)
+    integer :: n_temp                                       ! number of upper boundary points for temperature (input)
     real*8,allocatable::  utemp_time(:), utemp(:,:)         ! upper boundary time and temperature (input)
     real*8,allocatable::  utemp_time_i(:), utemp_i(:,:)     ! time and upper boundary temprature (interpolated)
-    integer n_snow                                          ! number of upper boundary points for snow (input)
+    integer :: n_snow                                       ! number of upper boundary points for snow (input)
     real*8 ,allocatable:: snd_time(:),snd(:,:)              ! upper boundary snow time and snow depth (input)
-    integer n_stcon
+    integer :: n_stcon
     real*8 ,allocatable:: stcon_time(:),stcon(:,:)          ! snow thermal conductivity time and itself (input)
     real*8 ,allocatable:: snd_i (:,:), stcon_i (:,:)        ! snow depth and thermal conductivity (interpolated)
-    real*8 TINIR,time_restart
+    real*8 :: TINIR
+    real*8 :: time_restart                                  ! restart time in restart file
     integer lbound                                          ! 1 const temp, 2 heat flux condition at the bottom boundary
 
 ! Parameter read from cmd file
-    integer :: restart                                      ! 0/1 start from previous time step / start from the begining
-    real*8 	:: STEP                                         ! step is the timestep in the example it is 1 yr
-    real*8 	:: TAUM                                         ! taum is the convergence parameter used by the stefan subroutine
-    real*8 	:: TMIN                                         ! tmin minimal timestep used in the Stefan subroutine
-    real*8  :: time_beg,time_end                            ! inbegin time, end time
-    integer :: itmax                                        ! maximum number of iterations in Stefan subroutine
-    integer :: n_time                                       ! number of time steps that temp will be averaged over
-    integer :: n_frz_max                                    ! maximum number of freezing fronts
-    real*8  :: smooth_coef                                  ! smoothing factor
-    real*8  :: unf_water_coef                               ! unfrozen water coefficient
-    real*8  :: n_sec_day                                    ! number of second in a day
-    real*8  :: frz_frn_max,frz_frn_min                      ! freezing front min and max depth [meters]
-    real*8  :: sat_coef                                     ! saturation coefficient [dimensionless, fraction of 1]
+    integer :: restart                                     ! 0/1 start from previous time step / start from the begining
+    real*8 :: time_step                                    ! step is the timestep in the example it is 1 yr
+    real*8 :: TAUM                                         ! taum is the convergence parameter used by the stefan subroutine
+    real*8 :: TMIN                                         ! tmin minimal timestep used in the Stefan subroutine
+    real*8 :: time_beg,time_end                            ! inbegin time, end time
+    integer :: itmax                                       ! maximum number of iterations in Stefan subroutine
+    integer :: n_time                                      ! number of time steps that temp will be averaged over
+    integer :: n_frz_max                                   ! maximum number of freezing fronts
+    real*8 :: smooth_coef                                  ! smoothing factor
+    real*8 :: unf_water_coef                               ! unfrozen water coefficient
+    real*8 :: n_sec_day                                    ! number of second in a day
+    real*8 :: frz_frn_max,frz_frn_min                      ! freezing front min and max depth [meters]
+    real*8 :: sat_coef                                     ! saturation coefficient [dimensionless, fraction of 1]
 
 end module bnd
 
@@ -45,7 +46,8 @@ module thermo
     real*8,allocatable:: hcap_frz(:,:),hcap_thw(:,:)        ! soil layer heat capacity thawed/frozen
     real*8,allocatable:: tcon_frz(:,:),tcon_thw(:,:)        ! soil layer thermal conductivity thawed/frozen
 
-    real*8 shcap                                            ! heat capacity of snow (constant)
+    real*8, parameter  :: hcap_snow=840000.0                ! heat capacity of snow (constant)
+    real*8 :: hcap_s                                         ! heat capacity of snow (constant) nondimentional
 
     real*8, allocatable :: temp(:,:)                        ! soil temperature
     real, allocatable:: n_bnd_lay(:,:)                      ! number of boundaries between layer in soil
@@ -62,13 +64,14 @@ end module thermo
 
 module grd
     integer, parameter :: n_lay=10                          ! total allowed number of soil layer
+    integer,allocatable:: n_lay_cur(:)                      ! current number of soil layers <= n_lay
+                                                            ! calclulated as a sum of organic and mineral soil layers
     integer :: n_site                                       ! number of sites
     integer :: n_grd                                        ! total number of grid points with depth (grid.txt)
     real*8,allocatable:: zdepth(:),dz(:)                    ! vertical grid and distance between grid point 'zdepth(n_grd)'
     integer,allocatable:: lay_id(:,:)                       ! layer index
     integer :: m_grd                                        ! number of grid points to store in res file
     integer,allocatable:: zdepth_id(:)                      ! index vector of stored grid points 'zdepth_id(m_grid)'
-    integer,allocatable:: NUMSL(:)
     integer :: n_ini                                        ! number of vertical grid cells in init file
     real*8, allocatable :: zdepth_ini(:),ztemp_ini(:,:)     ! depth and correspoding initial temperature (time=0) 'zdepth_ini(n_ini)'
 
@@ -111,18 +114,21 @@ implicit none
     real*8, allocatable:: time_cur(:)                       ! current time (e.g. current day)
     integer :: n_itime                                      ! total number of internal time steps
 ! other counters
-    integer :: I,II,J,JJ
+    integer :: i_site,j_time,i_grd,i_lay
 ! output file names
     character(64) :: restart_file,result_file,aver_res_file
 ! putput files formats
     character(210) :: FMT1,FMT2                             ! results formating type
+
+real*8, allocatable:: z(:) ! vertical grid
+real*8 glm,hcscale
 
 ! MPI varriables----------------------------------------------
 ! This variable are for parallel code
     integer   my_rank  ! My process rank.
     integer   mype     ! The number of processes.
     integer   nx1,nx2  ! partitioning with dimensions nx2-nx1
-    integer   subset ! n_site/mype
+    integer   subset   ! n_site/mype
     integer   ierr
 !------------------------------------------------------------
 !my_rank=3
@@ -135,6 +141,30 @@ implicit none
     mype=1
 
     call initialize
+
+    lbound=2 !1 Dirichlet, 2 heat flux condition at the bottom boundary
+
+    allocate(z(n_grd),STAT=IERR)
+    allocate(dz(n_grd),STAT=IERR)
+    glm=zdepth(n_grd)
+    z=zdepth/GLM
+    do i_grd=2,n_grd
+        dz(i_grd)=z(i_grd)-z(i_grd-1)
+    enddo
+    HCSCALE=glm*glm/n_sec_day
+    hcap_frz=hcap_frz*HCSCALE
+    hcap_thw=hcap_thw*HCSCALE
+    hcap_s=hcap_snow*HCSCALE
+    L_fus=HCSCALE*333.2*1.D+6
+
+    allocate(temp(n_site,n_grd),STAT=IERR)
+    allocate(lay_id(n_site,n_grd),STAT=IERR)
+    allocate(i_time(n_site),STAT=IERR)
+    allocate(z_frz_frn(n_time,n_frz_max,n_site),STAT=IERR)
+    allocate(n_frz_frn(n_time,n_site),STAT=IERR)
+    allocate(temp_frz(n_lay,n_site),STAT=IERR)
+
+    call  assign_layer_id(n_lay,n_lay_cur,n_site,n_grd,zdepth,n_bnd_lay,lay_id)
 
     subset = n_site/mype      ! subset length
     nx1 = my_rank*subset+1
@@ -150,8 +180,8 @@ implicit none
 
 !      n_itime=n_time*time_end+3
     n_itime=n_time+2
-    time_s=STEP*DBLE(n_time*time_beg)
-    time_e=STEP*DBLE(n_time*time_end)
+    time_s=time_step*DBLE(n_time*time_beg)
+    time_e=time_step*DBLE(n_time*time_end)
     time_loop=0.0D0
     TINIR=0.0D0
 !-----------------------------------------------initial data read
@@ -172,96 +202,92 @@ implicit none
     allocate(stcon_i(n_itime,n_site),STAT=IERR)
 	
 !****************************************************************************	
-    do I=1,n_time+2
-        utemp_time_i(I)=time_restart+DBLE(I-1)*STEP
+    do j_time=1,n_time+2
+        utemp_time_i(j_time)=time_restart+DBLE(j_time-1)*time_step
     enddo
     i_time=1
 
-    do I=nx1,nx2
-        if (lbound.EQ.2)temp_grd(i)=temp_grd(i)*zdepth(n_grd)
-        do ii=1,NUMSL(i)
-            temp_frz(ii,i)=-(vwc(ii,i)/a_coef(ii,i))**(1.d0/b_coef(ii,i))
+    do i_site=nx1,nx2
+        if (lbound.EQ.2)temp_grd(i_site)=temp_grd(i_site)*zdepth(n_grd)
+        do i_lay=1,n_lay_cur(i_site)
+            temp_frz(i_lay,i_site)=-(vwc(i_lay,i_site)/a_coef(i_lay,i_site))**(1.d0/b_coef(i_lay,i_site))
         enddo
-        call interpolate(utemp_time,utemp(:,I),n_temp,utemp_time_i,utemp_i(:,I),n_itime)
-        call interpolate(snd_time,snd(:,I),n_snow,utemp_time_i,snd_i(:,I),n_itime)
-        call snowfix(utemp_i(:,I),snd_i(:,I),n_itime)
-        call interpolate(stcon_time,stcon(:,I),n_stcon,utemp_time_i,stcon_i(:,I),n_itime)
-        call active_layer(I)
+        call interpolate(utemp_time,utemp(:,i_site),n_temp,utemp_time_i,utemp_i(:,i_site),n_itime)
+        call interpolate(snd_time,snd(:,i_site),n_snow,utemp_time_i,snd_i(:,i_site),n_itime)
+        call snowfix(utemp_i(:,i_site),snd_i(:,i_site),n_itime)
+        call interpolate(stcon_time,stcon(:,i_site),n_stcon,utemp_time_i,stcon_i(:,i_site),n_itime)
+        call active_layer(i_site)
     enddo
 
 ! begining of the major loop
 65 CONTINUE
-    do I=nx1,nx2
-        time_cur(I)=time_loop(I)+time_restart
-        call save_results(I,time_cur(I),time_loop(I))
+    do i_site=nx1,nx2
+        time_cur(i_site)=time_loop(i_site)+time_restart
+        call save_results(i_site,time_cur(i_site),time_loop(i_site))
         6666  continue
-        call stefan1D(temp(I,:),n_grd,dz,time_loop(I),TAUM,TMIN,STEP,I,lay_id(I,:) &
-        ,ITMAX,smooth_coef,unf_water_coef,lbound,temp_grd(I),futemp,fapp_hcap,ftcon,fsat_unf_water)
-!--------------------------------------------
-!--------------------------------------------
-!	    do j=1,n_grd			! WRITTING RESULTS
-!	       write(1,'3(f12.3)') temp(I,j),zdepth(j),ftcon(temp(I,j),I,J,time_cur(I))
-!	    enddo
-        time_loop(I)=time_loop(I)+STEP
-        time_cur(I)=time_loop(I)+time_restart
-        if(i_time(I).LT.n_time)  then
-            i_time(I)=i_time(I)+1
-            call save_results(I,time_cur(I),time_loop(I))
-            call active_layer(I)
+        call stefan1D(temp(i_site,:),n_grd,dz,time_loop(i_site),i_site,lay_id(i_site,:), &
+                    temp_grd(i_site),futemp,fapp_hcap,ftcon,fsat_unf_water)
+        time_loop(i_site)=time_loop(i_site)+time_step
+        time_cur(i_site)=time_loop(i_site)+time_restart
+        if(i_time(i_site).LT.n_time)  then
+            i_time(i_site)=i_time(i_site)+1
+            call save_results(i_site,time_cur(i_site),time_loop(i_site))
+            call active_layer(i_site)
             GOTO 6666
         endif
         if(time_s.LT.time_e.AND.time_loop(nx1).GT.time_s)then
-            do II=1,n_time			! WRITTING RESULTS
-                write(1,FMT1) I, (RES(II,JJ),JJ=1,m_grd+3)
+            do j_time=1,n_time			! WRITTING RESULTS
+                write(1,FMT1) i_site, (RES(j_time,i_grd),i_grd=1,m_grd+3)
             enddo
         endif
-      	do jj=1,m_grd+3
-            res_save(jj,i)=sum((RES(:,JJ)))
+        do i_grd=1,m_grd+3
+            res_save(i_grd,i_site)=sum((RES(:,i_grd)))
         enddo
      enddo
 
       i_time=1
-      do I=nx1,nx2
+      do i_site=nx1,nx2
            frz_up_time_cur=-7777.D0
-	   frz_up_time_tot=frz_up_time_cur
-           do J=2,n_time
-              if((n_frz_frn(J,I)-n_frz_frn(J-1,I)).EQ.-2)then
-        	if(z_frz_frn(J-1,n_frz_frn(J-1,I),I).GE.frz_frn_min) frz_up_time_cur=SNGL(RES(J,1))
+           frz_up_time_tot=frz_up_time_cur
+           do j_time=2,n_time
+              if((n_frz_frn(j_time,i_site)-n_frz_frn(j_time-1,i_site)).EQ.-2)then
+                if(z_frz_frn(j_time-1,n_frz_frn(j_time-1,i_site),i_site).GE.frz_frn_min) frz_up_time_cur=SNGL(RES(j_time,1))
               endif
-           enddo
-	   if(frz_up_time_cur.GT.0.0)then
-	       frz_up_time_tot=AMOD(frz_up_time_cur,REAL(n_time))
-	       if(frz_up_time_tot.EQ.0.0)frz_up_time_tot=REAL(n_time)
-           endif
-           dfrz_frn=z_frz_frn(:,1,I)
-
-  	   call save_results(I,time_cur(I),time_loop(I))
-
-	   call active_layer(I)
-
-	   !____WRITTING MEAN
-	   write(2,FMT2) I,(res_save(JJ,I)/DBLE(n_time),JJ=1,m_grd+3), &
- 		   dfrz_frn(n_time),frz_up_time_cur,frz_up_time_tot	
-	   do j=1,n_itime
-	     utemp_time_i(j)=time_cur(nx1)+DBLE(j-1)*STEP
-	   enddo
-      	   call interpolate(utemp_time,utemp(:,I),n_temp,utemp_time_i,utemp_i(:,I),n_itime)
-      	   call interpolate(snd_time,snd(:,I),n_snow,utemp_time_i,snd_i(:,I),n_itime)
-	   call snowfix(utemp_i(:,I),snd_i(:,I),n_itime)
-	   call interpolate(stcon_time,stcon(:,I),n_stcon,utemp_time_i,stcon_i(:,I),n_itime)
       enddo
 
-      rewind(3) ! -------------start file writting begin     
-      write(3, * ) time_restart
-!      write(3, * ) time_cur(1)
-      do J=1,n_grd
-         write (3,* ) ( temp(II,J),II=nx1,nx2)
-      enddo     ! -------------start file writting end     
+      if(frz_up_time_cur.GT.0.0)then
+            frz_up_time_tot=AMOD(frz_up_time_cur,REAL(n_time))
+            if(frz_up_time_tot.EQ.0.0)frz_up_time_tot=REAL(n_time)
+      endif
 
-      TINIR=time_loop(nx1)
+      dfrz_frn=z_frz_frn(:,1,i_site)
+      call save_results(i_site,time_cur(i_site),time_loop(i_site))
+      call active_layer(i_site)
+
+    !____WRITTING MEAN
+      write(2,FMT2) i_site,(res_save(i_grd,i_site)/DBLE(n_time),i_grd=1,m_grd+3), &
+                                dfrz_frn(n_time),frz_up_time_cur,frz_up_time_tot
+      do j_time=1,n_itime
+            utemp_time_i(j_time)=time_cur(nx1)+DBLE(j_time-1)*time_step
+      enddo
+      call interpolate(utemp_time,utemp(:,i_site),n_temp,utemp_time_i,utemp_i(:,i_site),n_itime)
+      call interpolate(snd_time,snd(:,i_site),n_snow,utemp_time_i,snd_i(:,i_site),n_itime)
+      call snowfix(utemp_i(:,i_site),snd_i(:,i_site),n_itime)
+      call interpolate(stcon_time,stcon(:,i_site),n_stcon,utemp_time_i,stcon_i(:,i_site),n_itime)
+    enddo
+
+    rewind(3) ! -------------start file writting begin
+    write(3, * ) time_restart
+!   write(3, * ) time_cur(1)
+
+    do i_grd=1,n_grd
+        write (3,* ) ( temp(i_site,i_grd),i_site=nx1,nx2)
+    enddo     ! -------------start file writting end
+
+    TINIR=time_loop(nx1)
 !************************************************************
-6444    if(time_loop(nx1).LT.time_e)GO TO 65
-	close(1);close(2);close(3)
+6444 if(time_loop(nx1).LT.time_e)GO TO 65
+    close(1);close(2);close(3)
 !   call MPI_FINALIZE(ierr)
 
 end ! end of main program
@@ -278,9 +304,7 @@ implicit none
     integer IREAD,ierr
     integer :: i,j,k,z_num
 
-    real*8, allocatable:: Y(:)
-    real*8 glm,hcscale
-	
+
     real*8 ,allocatable ::gtzone(:,:)
     character*64 stdummy
     character*64 fconfig
@@ -388,7 +412,7 @@ implicit none
 
     open(60,FILE=cmdf)
         read(60,*)restart
-        read(60,*)STEP,TAUM,TMIN
+        read(60,*)time_step,TAUM,TMIN
         read(60,*) time_beg,time_end
         read(60,*) smooth_coef,unf_water_coef,itmax  !smoothing factor | unfrozen water parameter | max number of iterations
         read(60,*) n_sec_day,n_time ! number of second in a day [sec] | number of time steps (in the example number of days in a year )
@@ -413,8 +437,8 @@ implicit none
     close(60)
 !   print*,trim(cetkaf),' has been read'
 
-! note: that all max NUMSL layers has to be read or it will a give segmantation error
-!      n_lay=10!MAXVAL(NUMSL)
+! note: that all max n_lay_cur layers has to be read or it will a give segmantation error
+!      n_lay=10!MAXVAL(n_lay_cur)
 !----------------------------------------------------      
     open (60, file=fvegetation)
     read(60,*) vln ! reads numbers of  classes
@@ -469,7 +493,7 @@ implicit none
       allocate(hcap_thw(n_lay,n_site),STAT=IERR)
       allocate(tcon_frz(n_lay,n_site),STAT=IERR)
       allocate(tcon_thw(n_lay,n_site),STAT=IERR)
-      allocate(numsl(n_site),STAT=IERR)
+      allocate(n_lay_cur(n_site),STAT=IERR)
       allocate(n_bnd_lay(n_site,n_lay+1),STAT=IERR)
 
       do i = 1,n_site
@@ -496,8 +520,8 @@ implicit none
 !		  hcap_thw(J,I),hcap_frz(J,I),tcon_thw(J,I),tcon_frz(J,I),n_bnd_lay(i,j+1)
         enddo
 	k=1
-	NUMSL(I)=num_vl(veg_code(i))+num_gl(geo_code(i))
- 	do j=num_vl(veg_code(i))+1,NUMSL(I)
+	n_lay_cur(I)=num_vl(veg_code(i))+num_gl(geo_code(i)) ! maximum number of soil layer = organic layers + mineral layers
+ 	do j=num_vl(veg_code(i))+1,n_lay_cur(I)
 	   vwc(J,I)=B1(k,geo_code(i));
 	   a_coef(J,I)=B2(k,geo_code(i));
 	   b_coef(J,I)=B3(k,geo_code(i));
@@ -510,34 +534,10 @@ implicit none
 	   n_bnd_lay(i,j+1)=layer_thick!B8(geo_code(i),j)
 	   k=k+1
         enddo
-	   n_bnd_lay(i,NUMSL(I)+1)=zdepth(n_grd)
+	   n_bnd_lay(i,n_lay_cur(I)+1)=zdepth(n_grd)
       enddo
 
-	shcap=840000.0
-	lbound=2 !1 Dirichlet, 2 heat flux condition at the bottom boundary
 
-	allocate(Y(n_grd),STAT=IERR)
-	allocate(dz(n_grd),STAT=IERR)
-	glm=zdepth(n_grd) 
-	Y=zdepth/GLM
-	do i=2,n_grd
-	 dz(i)=y(i)-y(i-1)
-	enddo
-	HCSCALE=glm*glm/n_sec_day
-	hcap_frz=hcap_frz*HCSCALE
-	hcap_thw=hcap_thw*HCSCALE
-  	shcap=shcap*HCSCALE
-	L_fus=HCSCALE*333.2*1.D+6
-
-	allocate(temp(n_site,n_grd),STAT=IERR)
-	allocate(lay_id(n_site,n_grd),STAT=IERR)
-	allocate(i_time(n_site),STAT=IERR)
-	allocate(z_frz_frn(n_time,n_frz_max,n_site),STAT=IERR)
-      	allocate(n_frz_frn(n_time,n_site),STAT=IERR)
-	allocate(temp_frz(n_lay,n_site),STAT=IERR)	
-	
-	call  NSLOJS(n_lay,NUMSL,n_site,n_grd,zdepth,n_bnd_lay,lay_id)
-	
 
 end subroutine initialize
 
@@ -610,20 +610,21 @@ implicit none
 end subroutine active_layer
 
 subroutine save_results(k,time1,time2)
-USE thermo
-USE grd
-USE alt
-implicit none
-	integer :: k,j
-     	real*8  :: time1,time2
-      	real*8  :: futemp,fsnow_level
+use thermo
+use grd
+use alt
 
-	  RES(i_time(k),1)=time1
-          RES(i_time(k),2)=futemp(time2,k)
-          RES(i_time(k),3)=fsnow_level(k,time2)
-	  do  J=1,m_grd
-            RES(i_time(k),J+3)=temp(k,zdepth_id(J))
-	  enddo
+implicit none
+    integer :: k,j
+    real*8 :: time1,time2
+    real*8 :: futemp,fsnow_level
+
+    RES(i_time(k),1)=time1
+    RES(i_time(k),2)=futemp(time2,k)
+    RES(i_time(k),3)=fsnow_level(k,time2)
+    do  J=1,m_grd
+        RES(i_time(k),J+3)=temp(k,zdepth_id(J))
+    enddo
 
 end subroutine save_results
 
@@ -697,7 +698,7 @@ end subroutine save_results
       USE bnd
       REAL*8 T
       INTEGER I,II
-	II=1+IDINT((T-TINIR)/STEP)
+	II=1+IDINT((T-TINIR)/time_step)
 	futemp=utemp_i(II,I)+(T+time_restart-utemp_time_i(II)) &
 	  *(utemp_i(II+1,I)-utemp_i(II,I))/(utemp_time_i(II+1)-utemp_time_i(II))
       RETURN
@@ -745,18 +746,18 @@ SUBROUTINE interpolate(XIN,YIN,NIN,XOUT,YOUT,n_itime)
       RETURN
       END
 !----------------------------------------
-      SUBROUTINE NSLOJS(n_lay,NUMSL,n_site,n_grd,zdepth,n_bnd_lay,lay_id)
-	!assigns correspond layer to the point with with depth
+      SUBROUTINE assign_layer_id(n_lay,n_lay_cur,n_site,n_grd,zdepth,n_bnd_lay,lay_id)
+	!assigns correspond layer id to the grid point
 	!starting from surface to the bottom
-        INTEGER n_site,n_grd,n_lay,lay_id,NUMSL
-	DIMENSION lay_id(n_site,n_grd),NUMSL(n_site)
+        INTEGER n_site,n_grd,n_lay,lay_id,n_lay_cur
+	DIMENSION lay_id(n_site,n_grd),n_lay_cur(n_site)
 	REAL*8 zdepth(n_grd)
 	real n_bnd_lay(n_site,n_lay+1)
 
       do J=1,n_site
 	do 6 I=1,n_grd
-	lay_id(J,I)=NUMSL(J)
-      	  do K=1,NUMSL(J)-1
+	lay_id(J,I)=n_lay_cur(J)
+      	  do K=1,n_lay_cur(J)-1
              IF ( n_bnd_lay(J,K).LE.zdepth(I).AND.zdepth(I).LT.n_bnd_lay(J,K+1))THEN
 	     lay_id(J,I)=K
 	     GOTO 6
@@ -771,7 +772,7 @@ SUBROUTINE interpolate(XIN,YIN,NIN,XOUT,YOUT,n_itime)
 	USE bnd
 	REAL*8 T
 	INTEGER I,II
-      II=1+IDINT((T-TINIR)/STEP)
+      II=1+IDINT((T-TINIR)/time_step)
       fsnow_level=snd_i(II,I)+(T+time_restart-utemp_time_i(II))* &
 	(snd_i(II+1,I)-snd_i(II,I))/(utemp_time_i(II+1)-utemp_time_i(II))
 	RETURN
@@ -791,7 +792,7 @@ SUBROUTINE interpolate(XIN,YIN,NIN,XOUT,YOUT,n_itime)
        IF(zdepth(j).le.dsnow)THEN  		!atmosphere
 	      ftcon=1.d4
        ELSEIF (zdepth(j).Lt.XSNOW)THEN	!snow
-              II=1+IDINT((time_cur-TINIR)/STEP)
+              II=1+IDINT((time_cur-TINIR)/time_step)
 	      ftcon=stcon_i(II,I)+(time_cur+time_restart-utemp_time_i(II))* &
  			(stcon_i(II+1,I)-stcon_i(II,I))/(utemp_time_i(II+1)-utemp_time_i(II))
        ELSE				!ground
@@ -830,7 +831,7 @@ SUBROUTINE interpolate(XIN,YIN,NIN,XOUT,YOUT,n_itime)
 	NS=lay_id(I,J)
         XSNOW=sea_level
 	if(zdepth(J).lE.XSNOW)then
- 	  fapp_hcap=shcap            ! heat capacity for snow
+ 	  fapp_hcap=hcap_s            ! heat capacity for snow
 	else		    
 	   WC=funf_water(V(J),NS,I)/vwc(NS,I)
 	   fapp_hcap=hcap_thw(NS,I)*WC+hcap_frz(NS,I)*(1.0-WC)
@@ -864,26 +865,34 @@ SUBROUTINE interpolate(XIN,YIN,NIN,XOUT,YOUT,n_itime)
       RETURN
       END
 !-------------------------------------------------------
- SUBROUTINE stefan1D(UU,n_grd,dz,time_loop,TAUM,TMIN,STEP,I,NMS, &
- ITMAX,smooth_coef,unf_water_coef,NBOUND,flux,futemp,fapp_hcap,ftcon,fsat_unf_water)
-	USE thermo
-      IMPLICIT NONE
-      INTEGER NMS,n_grd,ITMAX,NBOUND,I
-      DIMENSION NMS(n_grd)
-      real*8 dz(n_grd),UU(n_grd)
-      REAL*8 time_loop,TAUM,time_restart,TMIN,STEP
-      REAL*8 smooth_coef,unf_water_coef
-      REAL*8 futemp,flux,fapp_hcap,ftcon,fsat_unf_water
+subroutine stefan1D(UU,n_grd,dz,time_loop,I,NMS, &
+flux,futemp,fapp_hcap,ftcon,fsat_unf_water)
 
-      INTEGER J,IT
-      REAL*8 RAB1,RAB2,AKAPA2,AMU2,Q2
-      REAL*8 A,B,C,D
-      REAL*8 ALF(n_grd),BET(n_grd)
-      real*8 U1(n_grd),U2(n_grd)
-      REAL*8 T1,T,time_cur,TAU
-      REAL*8 EEY,EEY1,abs1,abs2
-      REAL TAU1
-      integer :: aaa
+!call stefan1D(temp(I,:),n_grd,dz,time_loop(I),I,lay_id(I,:), &
+!temp_grd(I),futemp,fapp_hcap,ftcon,fsat_unf_water)
+
+    use thermo
+    use bnd
+
+    implicit none
+    integer :: n_grd
+
+    integer :: NMS
+    dimension NMS(n_grd)
+    integer :: I,J,IT
+
+    real*8 :: time_loop
+    real*8 :: dz(n_grd),UU(n_grd)
+
+    real*8 :: futemp,flux,fapp_hcap,ftcon,fsat_unf_water
+
+    real*8 :: RAB1,RAB2,AKAPA2,AMU2,Q2
+    real*8 :: A,B,C,D
+    real*8 :: ALF(n_grd),BET(n_grd)
+    real*8 :: U1(n_grd),U2(n_grd)
+    real*8 :: T1,T,time_cur,TAU
+    real*8 :: EEY,EEY1,abs1,abs2
+    real :: TAU1
 
       T1=time_loop
       TAU1=-1.0
@@ -898,9 +907,9 @@ SUBROUTINE interpolate(XIN,YIN,NIN,XOUT,YOUT,n_itime)
       BET(2)=futemp(time_cur,I)
 22    continue
       IF(IT.GT.ITMAX) THEN
-	TAU=TAU/2.D0
-	TAU1=-1.0
-	GOTO 64
+        TAU=TAU/2.D0
+        TAU1=-1.0
+        GOTO 64
       ENDIF
       DO J=2,n_grd-1
         D=fapp_hcap(U1,I,J)/TAU
@@ -916,13 +925,13 @@ SUBROUTINE interpolate(XIN,YIN,NIN,XOUT,YOUT,n_itime)
       AKAPA2=2.D0*RAB1/(((RAB2*dz(n_grd)*dz(n_grd))/TAU+2.D0*RAB1))
       Q2=RAB1*flux
       AMU2=(UU(n_grd)*RAB2/TAU+2.D0*Q2/dz(n_grd))/(RAB2/TAU+2.D0*RAB1 &
-	 /dz(n_grd)**2.D0)
+                                                        /dz(n_grd)**2.D0)
       IF(DABS(AKAPA2)>1.D0) then 
         PRINT*,'YOU CAN NOT APPLY PROGONKA ON OY - CHANGE STEPS'
         print*,rab1,rab2,akapa2
         STOP
       endif
-      IF (NBOUND.EQ.2)THEN
+      IF (lbound.EQ.2)THEN
        U2(n_grd)=(AMU2+AKAPA2*BET(n_grd))/(1.D0-ALF(n_grd)*AKAPA2)
       ELSE
        U2(n_grd)=flux
@@ -944,7 +953,7 @@ SUBROUTINE interpolate(XIN,YIN,NIN,XOUT,YOUT,n_itime)
 	  endif 
 	enddo
       endif
-      IF(T.LT.time_loop+STEP-1.D-12)THEN
+      IF(T.LT.time_loop+time_step-1.D-12)THEN
 	  T1=T
 	  UU=U2
 	  IF(TAU1>0) then 
@@ -956,8 +965,8 @@ SUBROUTINE interpolate(XIN,YIN,NIN,XOUT,YOUT,n_itime)
             TAU1=1.0
           endif
 	  GOTO 64
-      ELSEIF(T.GT.time_loop+STEP+1.D-12)THEN
-          TAU=(time_loop+STEP-T1)
+      ELSEIF(T.GT.time_loop+time_step+1.D-12)THEN
+          TAU=(time_loop+time_step-T1)
           goto 64
       ELSE
           UU=U2
