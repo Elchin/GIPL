@@ -8,7 +8,7 @@ Current version been significanlty modefied from its predicessor and using the I
 This version is maintained by E. Jafarov at INSTAAR, CU Boulder.<br />
 Please cite Jafarov et al., (2012) when using the model.<br />
 
-More details on model implementation could be found in Jafarov et al., (2012; 2014)
+More details on model implementation could be found in Jafarov et al., (2012; 2014) and on the [CSDMS model site] (http://csdms.colorado.edu/wiki/Model:GIPL)
 
 ###References
 Jafarov E.E., Nicolsky D.J., Romanovsky V.E., Walsh J.E., Panda S.K., Serreze M.C. 2014. The effect of snow: How to better model ground surface temperatures. Cold Regions Science and Technology, Volume 102, Pages 63-77, ISSN 0165-232X, doi: 10.1016/j.coldregions.2014.02.007.  
