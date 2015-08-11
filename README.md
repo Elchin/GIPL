@@ -16,7 +16,7 @@ Jafarov, E. E., Marchenko, S. S., and Romanovsky, V. E.: Numerical modeling of p
 
 ###What to do first: 
 **Windows**: Compile the gipl.f90 and call the executable file gipl.exe  <br />
-**Linux**: make  <br />
+**Linux**: Use Makefile to create executable, just type 'make' in your command line  <br />
 Please see the cfg file for more information on how to orginize and input and output files 
 Copy all the files in the same folder. Create "in" folder and move all the input files "*.txt" into that folder. 
 Then create "dump" folder in the same directory. All the **output files** will be written in that folder.
