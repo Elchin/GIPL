@@ -1,4 +1,4 @@
-# GIPL
+# GIPL2
 ====
 
 Geophysical Institute Permafrost Laboratory 2 model version 01 (GIPL2v01) <br />
