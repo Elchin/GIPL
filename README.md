@@ -17,14 +17,12 @@ Jafarov, E. E., Marchenko, S. S., and Romanovsky, V. E.: Numerical modeling of p
 ###What to do first: 
 **Windows**: Compile the gipl.f90 and call the executable file gipl.exe  <br />
 **Linux**: Use Makefile to create executable, just type 'make' in your command line  <br />
-Please see the cfg file for more information on how to orginize and input and output files 
-Copy all the files in the same folder. All input files should be stores in "in" folder. The storage of the output files can be prescribed in the config file. Current ouput configuration include 'results.txt' file with daily output, 'mean.txt' with the yearly averaged data such as active layer thickness and freezeup day. The file 'start.txt' includes the temperature profilee with depth for the last day of simulation. The file with measured temperatures is 'mesres.txt'. The compare(0) is a matlab script that polot the output daily file against measured data for four specified depths and estimates the mean average error between the measured and the calculated ground temperatures. 
+Please see the 'cfg' file for more information on how to orginize and input and output files. All input files should be stored in "in" folder. The path for the output files can be prescribed in the config file. Current output configuration include 3 files: 'results.txt' file with daily output, 'mean.txt' with the yearly averaged data such as active layer thickness and freezeup day, and the file 'start.txt' includes the temperature profilee with depth for the last day of a simulation. The file with measured temperatures is 'mesres.txt'. The compare(0) is a matlab script that polts the output daily file against measured data for four specified depths and estimates the mean average error between the measured and the calculated ground temperatures. 
 
 ###Input data:
 All input files are located in the "in" folder
 
-**gipl_config.cfg** include <br />
-Include paths for input and uotput files and the correspoding setup paramteres. 
+**gipl_config.cfg** includes paths for input and uotput files and the correspoding setup paramteres. <br />
 0/1: start from previous time step / start from the begining<br />
 step | taum | tmin : <br />
 	step is the timestep in the example it is 1<br />
