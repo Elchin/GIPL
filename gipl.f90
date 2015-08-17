@@ -1,9 +1,13 @@
 ! Geophysical Instatitue Permafrost Laboratory 2 model version 01 (GIPL2v01)
-! GIPL2 is a numerical transient model that employs phase changes and the effect of the unfrozen volumetric  water content in the non-homogeniuos soil texture
-! Original version of the model developed by Romanovsky and Tipenko 2004 and described in Marchenko et al., (2008)
+! GIPL2 is a numerical transient heat flow model that employs phase changes and the effect of the unfrozen volumetric  water content
+! in the non-homogeniuos soil profile.
+! Original version of the model developed by Romanovsky and Tipenko 2004 and described in Marchenko et al., (2008).
 ! Current version been significanlty modefied from its predicessor and using the IRF coding design
 ! This version is maintained by E. Jafarov at INSTAAR, CU Boulder
 ! Please site Jafarov et al., (2012) work when using it.
+! future work make the model object oriented (isite)
+! how setter and 1detter are goinf to use current tempratures
+! if one step is down then update function should pass the temprerature to getter?
 
 program gipl
 
@@ -36,86 +40,70 @@ implicit none
     real*8 futemp                                           ! temperature interpolation
     real*8 fsat_unf_water                                   ! saturated unfrozen water
 ! variables
-    real*8 ,allocatable:: res_save(:,:)                     ! save results into 2D array
-    real*8 ,allocatable:: dfrz_frn(:)                       ! depth of the freezing front
-    real frz_up_time_cur                                    ! freezeup time current (within a year)
-    real frz_up_time_tot                                    ! freezeup time global
+    real*8 :: res_save(m_grd+3,n_site)                      ! save results into 2D array
+    real*8 :: dfrz_frn(n_time)                              ! depth of the freezing front
+    real :: frz_up_time_cur                                 ! freezeup time current (within a year)
+    real :: frz_up_time_tot                                 ! freezeup time global
 ! counters (time,steps)
     real*8 time_s,time_e                                    ! internal start and end times
-    real*8, allocatable:: time_loop(:)                      ! main looping time
-    real*8, allocatable:: time_cur(:)                       ! current time (e.g. current day)
+    real*8 :: time_loop(n_site)                             ! main looping time
+    real*8 :: time_cur(n_site)                              ! current time (e.g. current day)
     integer :: n_itime                                      ! total number of internal time steps
 ! other counters
     integer :: i_site,j_time,i_grd,i_lay
 
-    real*8, allocatable :: z(:)                             ! vertical grid
+    real*8 :: z(n_grd)                                      ! vertical grid
     real*8 :: hcscale                                       ! nondimensional factor
     integer :: ierr
 
+z=zdepth/zdepth(n_grd)                                      ! normalizing soil grid
+do i_grd=2,n_grd
+    dz(i_grd)=z(i_grd)-z(i_grd-1)
+enddo
+hcscale=zdepth(n_grd)*zdepth(n_grd)/n_sec_day
+hcap_frz=hcap_frz*hcscale
+hcap_thw=hcap_thw*hcscale
+hcap_s=hcap_snow*hcscale
+L_fus=hcscale*333.2*1.D+6
 
-    !call initialize
-    !call run_model
+call  assign_layer_id(n_lay,n_lay_cur,n_site,n_grd,zdepth,n_bnd_lay,lay_id)
 
-    allocate(z(n_grd),STAT=ierr)
-    allocate(dz(n_grd),STAT=ierr)
+n_itime=n_time+2
+time_s=time_step*DBLE(n_time*time_beg)
+time_e=time_step*DBLE(n_time*time_end)
+time_loop=0.0D0
+time_internal=0.0D0
 
-    z=zdepth/zdepth(n_grd)                              ! normalizing soil grid
-    do i_grd=2,n_grd
-        dz(i_grd)=z(i_grd)-z(i_grd-1)
-    enddo
-    hcscale=zdepth(n_grd)*zdepth(n_grd)/n_sec_day
-    hcap_frz=hcap_frz*hcscale
-    hcap_thw=hcap_thw*hcscale
-    hcap_s=hcap_snow*hcscale
-    L_fus=hcscale*333.2*1.D+6
+call init_cond(restart,n_site)
 
-    call  assign_layer_id(n_lay,n_lay_cur,n_site,n_grd,zdepth,n_bnd_lay,lay_id)
-
-    allocate(res_save(m_grd+3,n_site),STAT=ierr)
-    allocate(dfrz_frn(n_time),STAT=ierr)
-    allocate(time_loop(n_site),STAT=ierr)
-    allocate(time_cur(n_site),STAT=ierr)
-    allocate(res_vars(n_time,m_grd+3),STAT=ierr)
-!________________INITIALIZATION________________________
-!      n_itime=n_time*time_end+3
-    n_itime=n_time+2
-    time_s=time_step*DBLE(n_time*time_beg)
-    time_e=time_step*DBLE(n_time*time_end)
-    time_loop=0.0D0
-    time_internal=0.0D0
-!-----------------------------------------------initial data read
-
-    call init_cond(restart,n_site)
-
-    allocate(utemp_time_i(n_itime),STAT=ierr)                  ! allocating interval varialbe after interation
-    allocate(utemp_i(n_itime,n_site),STAT=ierr)
-    allocate(snd_i(n_itime,n_site),STAT=ierr)
-    allocate(stcon_i(n_itime,n_site),STAT=ierr)
+allocate(utemp_time_i(n_itime),STAT=ierr)                   ! allocating interval varialbe after interation
+allocate(utemp_i(n_itime,n_site),STAT=ierr)
+allocate(snd_i(n_itime,n_site),STAT=ierr)
+allocate(stcon_i(n_itime,n_site),STAT=ierr)
 	
-!****************************************************************************	
-    do j_time=1,n_time+2
-        utemp_time_i(j_time)=time_restart+DBLE(j_time-1)*time_step
-    enddo
-    i_time=1
+do j_time=1,n_time+2
+    utemp_time_i(j_time)=time_restart+DBLE(j_time-1)*time_step
+enddo
+i_time=1
 
-    do i_site=1,n_site
-        if (lbound.EQ.2)temp_grd(i_site)=temp_grd(i_site)*zdepth(n_grd)
-        do i_lay=1,n_lay_cur(i_site)
-            temp_frz(i_lay,i_site)=-(vwc(i_lay,i_site)/a_coef(i_lay,i_site))**(1.d0/b_coef(i_lay,i_site))
-        enddo
-        call interpolate(utemp_time,utemp(:,i_site),n_temp,utemp_time_i,utemp_i(:,i_site),n_itime)
-        call interpolate(snd_time,snd(:,i_site),n_snow,utemp_time_i,snd_i(:,i_site),n_itime)
-        call snowfix(utemp_i(:,i_site),snd_i(:,i_site),n_itime)
-        call interpolate(stcon_time,stcon(:,i_site),n_stcon,utemp_time_i,stcon_i(:,i_site),n_itime)
-        call active_layer(i_site)
+do i_site=1,n_site
+    if (lbound.EQ.2)temp_grd(i_site)=temp_grd(i_site)*zdepth(n_grd)
+    do i_lay=1,n_lay_cur(i_site)
+        temp_frz(i_lay,i_site)=-(vwc(i_lay,i_site)/a_coef(i_lay,i_site))**(1.d0/b_coef(i_lay,i_site))
     enddo
+    call interpolate(utemp_time,utemp(:,i_site),n_temp,utemp_time_i,utemp_i(:,i_site),n_itime)
+    call interpolate(snd_time,snd(:,i_site),n_snow,utemp_time_i,snd_i(:,i_site),n_itime)
+    call snowfix(utemp_i(:,i_site),snd_i(:,i_site),n_itime)
+    call interpolate(stcon_time,stcon(:,i_site),n_stcon,utemp_time_i,stcon_i(:,i_site),n_itime)
+    call active_layer(i_site)
+enddo
 
-    open(1,file=result_file,STATUS='unknown')
-    open(2,file=aver_res_file,STATUS='unknown')
-    open(3,file=restart_file,STATUS='unknown')
+open(1,file=result_file,STATUS='unknown')
+open(2,file=aver_res_file,STATUS='unknown')
+open(3,file=restart_file,STATUS='unknown')
 
 ! begining of the major loop
-65 CONTINUE
+do while (time_loop(1).LT.time_e)
     do i_site=1,n_site
         time_cur(i_site)=time_loop(i_site)+time_restart
         call save_results(i_site,time_cur(i_site),time_loop(i_site))
@@ -180,10 +168,8 @@ implicit none
 
     time_internal=time_loop(1)
 
-    if(time_loop(1).LT.time_e)GO TO 65
-    close(1);close(2);close(3)
-
-   ! call finilize
+end do
+close(1);close(2);close(3)
 
 end subroutine run_model
 
@@ -199,13 +185,12 @@ implicit none
     integer IREAD,ierr
     integer :: i,j,k,z_num
 
-
     real*8 ,allocatable ::gtzone(:,:)
-    character*64 stdummy
-    character*64 fconfig
-
-    character*64 finput,boundf,snowf,rsnowf,inif
-    character*64 cmdf,cetkaf,fvegetation,fgeology
+    character*64 :: stdummy
+! input file names
+    character*64 :: file_config, file_input, file_bound
+    character*64 :: file_snow,file_rsnow,file_init
+    character*64 :: file_grid,file_organic,file_mineral
 
     real*8,allocatable:: A1(:,:),A2(:,:),A3(:,:),A4(:,:),A5(:,:)
     real*8,allocatable:: A6(:,:),A7(:,:),A8(:,:)
@@ -218,36 +203,58 @@ implicit none
     real*8 :: layer_thick
     integer :: gln
 
-fconfig='gipl_config.cfg'
-call filexist(fconfig)
-open(60,file=fconfig)
-! input files
-    read(60,'(A)')finput
-    read(60,'(A)')boundf
-    read(60,'(A)')snowf
-    read(60,'(A)')rsnowf
-    read(60,'(A)')inif
-    read(60,'(A)')cmdf
-    read(60,'(A)')cetkaf
-    read(60,'(A)')fvegetation
-    read(60,'(A)')fgeology
-!output files
+file_config='gipl_config.cfg'
+call filexist(file_config)
+open(60,file=file_config)
+! read input files
+read(60,'(A)')stdummy
+    read(60,'(A)')file_input
+    read(60,'(A)')file_bound
+    read(60,'(A)')file_snow
+    read(60,'(A)')file_rsnow
+    read(60,'(A)')file_init
+    read(60,'(A)')file_grid
+    read(60,'(A)')file_organic
+    read(60,'(A)')file_mineral
+
+! read output files
+    read(60,'(A)')stdummy
+    read(60,'(A)')stdummy
     read(60,'(A)')aver_res_file
     read(60,'(A)')result_file
     read(60,'(A)')restart_file
+
+! read input parameters
+    read(60,'(A)')stdummy
+    read(60,'(A)')stdummy
+    read(60,*)restart
+    read(60,'(A)')stdummy
+    read(60,*)time_step,TAUM,time_step_min
+    read(60,'(A)')stdummy
+    read(60,*) time_beg,time_end
+    read(60,'(A)')stdummy
+    read(60,*) smooth_coef,unf_water_coef,itmax  !smoothing factor | unfrozen water parameter | max number of iterations
+    read(60,'(A)')stdummy
+    read(60,*) n_sec_day,n_time ! number of second in a day [sec] | number of time steps (in the example number of days in a year )
+    read(60,'(A)')stdummy
+    read(60,*) sea_level,n_frz_max
+    read(60,'(A)')stdummy
+    read(60,*) frz_frn_min,frz_frn_max
+    read(60,'(A)')stdummy
+    read(60,*) sat_coef
 close(60)
 
-call filexist(finput)
-call filexist(boundf)
-call filexist(snowf)
-call filexist(rsnowf)
-call filexist(cetkaf)
-call filexist(inif)
-call filexist(fgeology)
-call filexist(fvegetation)
-call filexist(cmdf)
+call filexist(file_input)
+call filexist(file_bound)
+call filexist(file_snow)
+call filexist(file_rsnow)
+call filexist(file_grid)
+call filexist(file_init)
+call filexist(file_mineral)
+call filexist(file_organic)
 
-open(60,FILE=finput)
+
+open(60,FILE=file_input)
    read(60,*)n_site
     allocate(snow_code(n_site),STAT=ierr)
     allocate(veg_code(n_site),STAT=ierr)
@@ -258,10 +265,11 @@ open(60,FILE=finput)
         read(60,*) IREAD,snow_code(i),veg_code(i),geo_code(i),&
                 gt_zone_code(i),temp_grd(i)
     enddo
+
 close(60)
-!   print*, trim(finput),' has been read'
+!   print*, trim(file_input),' has been read'
       
-open(60,file=BOUNDF)
+open(60,file=file_bound)
     read(60,*)n_temp
     allocate(utemp_time(n_temp),STAT=ierr)
     allocate(utemp(n_temp,n_site),STAT=ierr)
@@ -269,9 +277,9 @@ open(60,file=BOUNDF)
         read(60,*) utemp_time(I),(utemp(I,J),J=1,n_site)
     enddo
 close(60)
-!   print*,trim(boundf),' has been read'
+!   print*,trim(file_bound),' has been read'
 
-open(60,file=RSNOWF)
+open(60,file=file_rsnow)
     read(60,*)n_stcon
     allocate(stcon_time(n_stcon),STAT=ierr)
     allocate(stcon(n_stcon,n_site),STAT=ierr)
@@ -279,9 +287,9 @@ open(60,file=RSNOWF)
         read(60,*) stcon_time(i),(stcon(i,J),J=1,n_site)
     enddo
 close(60)
-!   print*,trim(rsnowf),' has been read'
+!   print*,trim(file_rsnow),' has been read'
 
-open(60,file=SNOWF)
+open(60,file=file_snow)
     read(60,*)n_snow
     allocate(snd_time(n_snow),STAT=ierr)
     allocate(snd(n_snow,n_site),STAT=ierr)
@@ -289,9 +297,9 @@ open(60,file=SNOWF)
        read(60,*) snd_time(i),(snd(i,J),J=1,n_site)
     enddo
 close(60)
-!   print*,trim(snowf),' has been read'
+!   print*,trim(file_snow),' has been read'
 
-open(60,file=inif,action='read')
+open(60,file=file_init,action='read')
     read(60,*)z_num,n_ini!,time_restart
     allocate(zdepth_ini(n_ini),STAT=ierr)
     allocate(ztemp_ini(n_ini,n_site),STAT=ierr)
@@ -301,7 +309,7 @@ open(60,file=inif,action='read')
             read(60,*) (gtzone(i,j),j=1,z_num+1)
         enddo
 close(60)
-!   print*,trim(inif),'has been read'
+!   print*,trim(file_init),'has been read'
 
 time_restart=utemp_time(1)
 zdepth_ini(:)=gtzone(:,1)
@@ -310,19 +318,7 @@ do i=1,n_site
     ztemp_ini(:,I)=gtzone(:,k+1)
 enddo
 
-open(60,FILE=cmdf)
-    read(60,*)restart
-    read(60,*)time_step,TAUM,time_step_min
-    read(60,*) time_beg,time_end
-    read(60,*) smooth_coef,unf_water_coef,itmax  !smoothing factor | unfrozen water parameter | max number of iterations
-    read(60,*) n_sec_day,n_time ! number of second in a day [sec] | number of time steps (in the example number of days in a year )
-    read(60,*) sea_level,n_frz_max
-    read(60,*) frz_frn_min,frz_frn_max
-    read(60,*) sat_coef
-close(60)
-!   print*,trim(cmdf),' has been read'
-
-open(60,file=cetkaf)
+open(60,file=file_grid)
     read(60,*)n_grd
     allocate(zdepth(n_grd),STAT=ierr)
     do i=1,n_grd
@@ -334,12 +330,12 @@ open(60,file=cetkaf)
         read(60,*)zdepth_id(j)
     enddo
 close(60)
-!   print*,trim(cetkaf),' has been read'
+!   print*,trim(file_grid),' has been read'
 
 ! note: that all max n_lay_cur layers has to be read or it will a give segmantation error
 !      n_lay=10!MAXVAL(n_lay_cur)
 !----------------------------------------------------      
-open (60, file=fvegetation)
+open (60, file=file_organic)
     read(60,*) vln ! reads numbers of  classes
     allocate(A1(n_lay,vln),STAT=ierr) ! vwc
     allocate(A2(n_lay,vln),STAT=ierr) ! a_coef
@@ -359,9 +355,9 @@ open (60, file=fvegetation)
         enddo
     enddo
 close(60)
-!   print*,trim(fvegetation),' has been read'
+!   print*,trim(file_organic),' has been read'
 
-open (60, file='in/geo.txt')
+open (60, file=file_mineral)
     read(60,*) gln ! reads numbers of  classes
     allocate(B1(n_lay,gln),STAT=ierr) ! vwc
     allocate(B2(n_lay,gln),STAT=ierr) ! a_coef
@@ -381,7 +377,7 @@ open (60, file='in/geo.txt')
         enddo
     enddo
 close(60)
-!      print*,trim(fgeology),' has been read'
+!      print*,trim(file_mineral),' has been read'
 
 allocate(vwc(n_lay,n_site),STAT=ierr)
 allocate(a_coef(n_lay,n_site),STAT=ierr)
@@ -443,6 +439,9 @@ allocate(i_time(n_site),STAT=ierr)
 allocate(z_frz_frn(n_time,n_frz_max,n_site),STAT=ierr)
 allocate(n_frz_frn(n_time,n_site),STAT=ierr)
 allocate(temp_frz(n_lay,n_site),STAT=ierr)
+allocate(dz(n_grd),STAT=ierr)
+allocate(res_vars(n_time,m_grd+3),STAT=ierr)
+
 ! setting formats for the results and mean files
 write(FMT1,'(A30,I0,A12)')'(1x,I10,1x,F12.3,2(1x,F16.12),',m_grd,'(1x,F16.12))'
 write(FMT2,'(A28,I0,A40)')'(1x,I10,1x,F12.3,2(1x,F8.3),',m_grd,'(1x,F8.3),(1x,F8.3,1x,F12.3),(1x,F12.3))'
@@ -503,15 +502,15 @@ use grd
 implicit none
    integer rest_flag,nsite
    integer isite,igrd
-   character*64 inif
+   character*64 file_restart
 
 if(rest_flag.EQ.1)then                      !restart=1 means reading initial data from
     do isite=1,nsite
         call interpolate(zdepth_ini,ztemp_ini(:,isite),n_ini,zdepth,temp(isite,:),n_grd)
     enddo
 elseif(rest_flag.EQ.0)then                  !restart=0 enbales spinup
-    write(INIF,'(A11,I3.3,A4)') 'dump/start_',nsite+1,'.txt'
-    open(60,file=INIF,action='READ')
+    write(file_restart,'(A11,I3.3,A4)') 'dump/start_',nsite+1,'.txt'
+    open(60,file=file_restart,action='READ')
         read(60,*)time_restart              ! day number in restart file
         do igrd=1,n_grd
             read (60,* ) ( temp(isite,igrd),isite=1,nsite)

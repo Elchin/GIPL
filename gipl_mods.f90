@@ -44,15 +44,14 @@ real*8, parameter  :: hcap_snow=840000.0                ! heat capacity of snow 
 real*8 :: hcap_s                                        ! heat capacity of snow (constant) nondimentional
 
 real*8, allocatable :: temp(:,:)                        ! soil temperature
-real*8, allocatable:: n_bnd_lay(:,:)                      ! number of boundaries between layer in soil
+real*8, allocatable:: n_bnd_lay(:,:)                    ! number of boundaries between layer in soil
 integer k0
-
 
 integer, allocatable :: snow_code(:),veg_code(:)        ! (not necccessary) required for runing in parallel
 integer, allocatable :: geo_code(:),gt_zone_code(:)     ! (not necccessary) required for runing in parallel
 real*8, allocatable  :: temp_grd(:)                     ! temprature gradient at the lower boundary
 
-real*8 ,allocatable:: res_vars(:,:)                          ! unified variable for the writing results into the file
+real*8 ,allocatable:: res_vars(:,:)                     ! unified variable for the writing results into the file
 
 end module thermo
 
