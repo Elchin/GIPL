@@ -5,8 +5,10 @@
 ! Current version been significanlty modefied from its predicessor and using the IRF coding design
 ! This version is maintained by E. Jafarov at INSTAAR, CU Boulder
 ! Please site Jafarov et al., (2012) work when using it.
+
+! Notes
 ! future work make the model object oriented (isite)
-! how setter and 1detter are goinf to use current tempratures
+! how setter and 1detter are going to use current tempratures?
 ! if one step is down then update function should pass the temprerature to getter?
 
 program gipl
@@ -108,16 +110,15 @@ do while (time_loop(1).LT.time_e)
         time_cur(i_site)=time_loop(i_site)+time_restart
         call save_results(i_site,time_cur(i_site),time_loop(i_site))
         6666  continue
-        call stefan1D(temp(i_site,:),n_grd,dz,time_loop(i_site),i_site,lay_id(i_site,:), &
+        do while (i_time(i_site).LT.n_time)
+            call stefan1D(temp(i_site,:),n_grd,dz,time_loop(i_site),i_site,lay_id(i_site,:), &
                     temp_grd(i_site),futemp,fapp_hcap,ftcon,fsat_unf_water)
-        time_loop(i_site)=time_loop(i_site)+time_step
-        time_cur(i_site)=time_loop(i_site)+time_restart
-        if(i_time(i_site).LT.n_time)  then
+            time_loop(i_site)=time_loop(i_site)+time_step
+            time_cur(i_site)=time_loop(i_site)+time_restart
             i_time(i_site)=i_time(i_site)+1
             call save_results(i_site,time_cur(i_site),time_loop(i_site))
             call active_layer(i_site)
-            GOTO 6666
-        endif
+        enddo
         if(time_s.LT.time_e.AND.time_loop(1).GT.time_s)then
             do j_time=1,n_time			! WRITTING RESULTS
                 write(1,FMT1) i_site, (res_vars(j_time,i_grd),i_grd=1,m_grd+3)
