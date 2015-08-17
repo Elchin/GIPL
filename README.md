@@ -18,15 +18,13 @@ Jafarov, E. E., Marchenko, S. S., and Romanovsky, V. E.: Numerical modeling of p
 **Windows**: Compile the gipl.f90 and call the executable file gipl.exe  <br />
 **Linux**: Use Makefile to create executable, just type 'make' in your command line  <br />
 Please see the cfg file for more information on how to orginize and input and output files 
-Copy all the files in the same folder. Create "in" folder and move all the input files "*.txt" into that folder. 
-Then create "dump" folder in the same directory. All the **output files** will be written in that folder.
-results_001.txt include daily output and mean_001.txt include all the yearly averaged data including the active layer depth and freezeup day. You also need to copy mesres.txt into the dump folder. The compare(0) is a matlab script that outputs 
-in this example calculated daily ground temperatures at four specified depths and estimates the mean average error between the measured and the calculated ground temperatures. compare(1) will recalculate the output file.
+Copy all the files in the same folder. All input files should be stores in "in" folder. The storage of the output files can be prescribed in the config file. Current ouput configuration include 'results.txt' file with daily output, 'mean.txt' with the yearly averaged data such as active layer thickness and freezeup day. The file 'start.txt' includes the temperature profilee with depth for the last day of simulation. The file with measured temperatures is 'mesres.txt'. The compare(0) is a matlab script that polot the output daily file against measured data for four specified depths and estimates the mean average error between the measured and the calculated ground temperatures. 
 
 ###Input data:
 All input files are located in the "in" folder
 
-**cmd.txt** include <br />
+**gipl_config.cfg** include <br />
+Include paths for input and uotput files and the correspoding setup paramteres. 
 0/1: start from previous time step / start from the begining<br />
 step | taum | tmin : <br />
 	step is the timestep in the example it is 1<br />
@@ -38,6 +36,8 @@ number of second in a day [sec] | number of time steps (in the example number of
 sea level | max number of freezing fronts [integer number]<br />
 Freezing front min and max depth [meters]<br />
 saturation coefficient (fraction of 1)<br />
+
+File **input.txt** includes the total number of sites and the correspoding ids for the organic and mineral soils. In the current version the number of sites is equal to 1.
 
 **bound.txt** include upper boundary condition (in the example it is an air temperature T [Celsius])<br />
 First row is a number of points (in the example number of day)<br />
@@ -67,7 +67,7 @@ the code reads initial.txt file when in cmd.txt the first element is equal to 1.
 first parameter in the file can be ignored / second parameter is the number of points (in the example it is 13)
 First column corresponds to the depth in meters and the second column to the temperature [Celsius] measured at that depth at time=0
 
-**geo.txt** is the most important file which include all thermo-physical properties of the multilayered soil column
+**mineral.txt** is the most important file which include all thermo-physical properties of the multilayered soil column
 first row can be ignored<br />
 second row first element can be also ignored / second element in this row correspond to the number of layer <br />
 starting from row 3 to row 8 are thermo-physical properties of each layer.<br />
@@ -77,7 +77,4 @@ forth and fifth columns are the thawed and frozen volumetric heat capacities [J/
 six and seven columns are the thawed and frozen heat conductivities [W/(mK)]<br />
 eighths column is the thickness of the corresponding layer<br />
 
-Files **input.txt** and **vegetaion.txt** do not do anything. They needed for the code to run and was created for the parallel version of the code.
-
-
-
+File **organic.txt** have a similar structure to mineral and carries the parameters for the organic soil layer
