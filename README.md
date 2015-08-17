@@ -1,31 +1,43 @@
-# GIPL
+# GIPL2
 ====
 
-Geophysical Institute Permafrost Lab (GIPL) model. <br />
-Original version developed by Genadii Tipenko and Vladimir Romanovsky 
-at the Geophysical Institute Permafrost Laboratory, University of Alaska Fairbanks (©2004) 
-Modified by Elchin Jafarov (©2012)
+Geophysical Institute Permafrost Laboratory 2 model version 01 (GIPL2v01) <br />
+GIPL2 is a numerical transient model that employs phase changes and the effect of the unfrozen volumetric  water content in the non-homogeniuos soil texture. <br />
+Original version of the model developed by Romanovsky and Tipenko 2004 at the Geophysical Institute at Univeristy of Alaska Fairbanks, and described in Marchenko et al., (2008). <br />
+Current version been significanlty modefied from its predicessor and using the IRF coding design (see [Basic Machine Interface](http://csdms.colorado.edu/wiki/BMI_Description)). <br />
+This version is maintained by E. Jafarov at INSTAAR, CU Boulder. <br />
+Please cite Jafarov et al., (2012) when using the model. <br />
 
-More details on model implementation could be found in Jafarov et al., (2012; 2014)
+More details on model implementation could be found in Jafarov et al., (2012; 2014) and on the [CSDMS model site] (http://csdms.colorado.edu/wiki/Model:GIPL).
 
 ###References
 Jafarov E.E., Nicolsky D.J., Romanovsky V.E., Walsh J.E., Panda S.K., Serreze M.C. 2014. The effect of snow: How to better model ground surface temperatures. Cold Regions Science and Technology, Volume 102, Pages 63-77, ISSN 0165-232X, doi: 10.1016/j.coldregions.2014.02.007.  
 Jafarov, E. E., Marchenko, S. S., and Romanovsky, V. E.: Numerical modeling of permafrost dynamics in Alaska using a high spatial resolution dataset, The Cryosphere, 6, 613-624, doi:10.5194/tc-6-613-2012, 2012
 
-
 ###What to do first: 
-**Windows**: Compile the gipl.f90 and call the executable file snuw.exe  <br />
-**Linux**: gfortran gipl.f90 -o snuw  <br />
+**Windows**: Compile the gipl.f90 and call the executable file gipl.exe  <br />
+**Linux**: Use Makefile to create executable, just type 'make' in your command line  <br />
+Please see the cfg file for more information on how to orginize and input and output files 
 Copy all the files in the same folder. Create "in" folder and move all the input files "*.txt" into that folder. 
 Then create "dump" folder in the same directory. All the **output files** will be written in that folder.
-results_001.txt include daily output and mean_001.txt include all the yearly averaged data including the active layer depth and 
-freezeup day. You also need to copy mesres.txt into the dump folder. The compare(0) is a matlab script that outputs 
-in this example calculated daily ground temperatures at four specified depths and estimates the mean average error between the measured and the 
-calculated ground temperatures. compare(1) will recalculate the output file.
-
+results_001.txt include daily output and mean_001.txt include all the yearly averaged data including the active layer depth and freezeup day. You also need to copy mesres.txt into the dump folder. The compare(0) is a matlab script that outputs 
+in this example calculated daily ground temperatures at four specified depths and estimates the mean average error between the measured and the calculated ground temperatures. compare(1) will recalculate the output file.
 
 ###Input data:
 All input files are located in the "in" folder
+
+**cmd.txt** include <br />
+0/1: start from previous time step / start from the begining<br />
+step | taum | tmin : <br />
+	step is the timestep in the example it is 1<br />
+	taum is the convergence parameter used by the stefan subroutine <br />
+	tmin minimal timestep used in the Stefan subroutine <br />
+begin end : start and end, in the example it runs over one year from 0 to 1<br />
+smoothing factor | unfrozen water parameter | max number of iterations<br />
+number of second in a day [sec] | number of time steps (in the example number of days in a year )<br />
+sea level | max number of freezing fronts [integer number]<br />
+Freezing front min and max depth [meters]<br />
+saturation coefficient (fraction of 1)<br />
 
 **bound.txt** include upper boundary condition (in the example it is an air temperature T [Celsius])<br />
 First row is a number of points (in the example number of day)<br />
@@ -41,19 +53,6 @@ Column 2: Snow depth (daily averaged)
 First row is a number of points (in the example number of day) <br />
 Column 1: Time parameter (day number)<br />
 Column 2: Snow conductivity (daily averaged)
-
-**cmd.txt** include <br />
-0/1: start from previous time step / start from the begining<br />
-step | taum | tmin : <br />
-	step is the timestep in the example it is 1<br />
-	taum is the convergence parameter used by the stefan subroutine <br />
-	tmin minimal timestep used in the Stefan subroutine <br />
-begin end : start and end, in the example it runs over one year from 0 to 1<br />
-smoothing factor | unfrozen water parameter | max number of iterations<br />
-number of second in a day [sec] | number of time steps (in the example number of days in a year )<br />
-sea level | max number of freezing fronts [integer number]<br />
-Freezing front min and max depth [meters]<br />
-saturation coefficient (fraction of 1)<br />
 
 **grid.txt** includes number of grid point (n), <br />
 vertical grid (in the example starts from the 1.5 meter above the ground up to 90 meters) 
