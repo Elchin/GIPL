@@ -13,6 +13,7 @@ use alt
 
 call initialize
 call run_model
+call finilize
 
 end ! end of main program
 
@@ -37,7 +38,6 @@ implicit none
     real*8 :: time_cur(n_site)                       ! current time (e.g. current day)
 ! other counters
     integer :: i_site,j_time,i_grd,i_lay
-	integer:: ierr
 
 time_s=time_step*DBLE(n_time*time_beg)
 time_e=time_step*DBLE(n_time*time_end)
@@ -113,10 +113,15 @@ do while (time_loop(1).LT.time_e)
     TINIR=time_loop(1)
 enddo
 
-close(1);close(2);close(3)
 end subroutine run_model
 
+subroutine finilize
 
+close(1);close(2);close(3)
+
+end subroutine finilize
+
+ 
 subroutine initialize
 use const
 use bnd
@@ -148,7 +153,7 @@ implicit none
     real*8 :: layer_thick
     integer :: gln
     real*8, allocatable :: z(:) ! vertical grid
-    	real*8 :: hcscale
+    real*8 :: hcscale
 
     fconfig='gipl_config.cfg'
     call filexist(fconfig)
@@ -173,23 +178,25 @@ implicit none
         read(60,'(A)')restart_file
 
 ! read input parameters
-read(60,'(A)')stdummy
-read(60,'(A)')stdummy
-read(60,*)restart
-read(60,'(A)')stdummy
-read(60,*)time_step,TAUM,TMIN
-read(60,'(A)')stdummy
-read(60,*) time_beg,time_end
-read(60,'(A)')stdummy
-read(60,*) smooth_coef,unf_water_coef,itmax  !smoothing factor | unfrozen water parameter | max number of iterations
-read(60,'(A)')stdummy
-read(60,*) n_sec_day,n_time ! number of second in a day [sec] | number of time steps (in the example number of days in a year )
-read(60,'(A)')stdummy
-read(60,*) sea_level,n_frz_max
-read(60,'(A)')stdummy
-read(60,*) frz_frn_min,frz_frn_max
-read(60,'(A)')stdummy
-read(60,*) sat_coef
+		read(60,'(A)')stdummy
+		read(60,'(A)')stdummy
+		read(60,*)restart
+		read(60,'(A)')stdummy
+		read(60,*)time_step,TAUM,TMIN
+		read(60,'(A)')stdummy
+		read(60,*) time_beg,time_end
+		read(60,'(A)')stdummy
+		read(60,*) smooth_coef,unf_water_coef,itmax  
+		!smoothing factor | unfrozen water parameter | max number of iterations
+		read(60,'(A)')stdummy
+		read(60,*) n_sec_day,n_time 
+		! number of second in a day [sec] | number of time steps (in the example number of days in a year )
+		read(60,'(A)')stdummy
+		read(60,*) sea_level,n_frz_max
+		read(60,'(A)')stdummy
+		read(60,*) frz_frn_min,frz_frn_max
+		read(60,'(A)')stdummy
+		read(60,*) sat_coef
 
     close(60)
 
