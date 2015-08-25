@@ -2,9 +2,9 @@ function compare(k);
 % s: sight 
 % k: 0 turn off, 1 turn on
 %clear all
-if k==1, status = dos('snuw.exe'); end
-m1=load('dump/result_001.txt'); 
-m2=load('dump/mesres.txt');
+if k==1, status = dos('./gipl'); end
+m1=load('dump/result.txt');
+m2=load('mesres.txt');
 
 
 calc=m1(:,5:end);

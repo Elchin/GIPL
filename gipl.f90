@@ -13,7 +13,7 @@ use alt
 
 call initialize
 call run_model
-call finilize
+call finalize
 
 end ! end of main program
 
@@ -28,15 +28,14 @@ use alt
 implicit none
 
 ! variables
-    real*8 :: res_save(m_grd+3,n_site)                     ! save results into 2D array
+    real*8 :: res_save(m_grd+3,n_site)               ! save results into 2D array
     real*8 :: dfrz_frn(n_time)                       ! depth of the freezing front
-    real :: frz_up_time_cur                                    ! freezeup time current (within a year)
-    real :: frz_up_time_tot                                    ! freezeup time global
+    real :: frz_up_time_cur                          ! freezeup time current (within a year)
+    real :: frz_up_time_tot                          ! freezeup time global
 ! counters (time,steps)
-    real*8 :: time_s,time_e                                    ! internal start and end times
-    real*8 :: time_loop(n_site)                      ! main looping time
-    real*8 :: time_cur(n_site)                       ! current time (e.g. current day)
-! other counters
+    real*8 :: time_s,time_e                          ! internal start and end times
+    real*8 :: time_loop                      		 ! main looping time
+    real*8 :: time_cur                     			 ! current time (e.g. current day)
     integer :: i_site,j_time,i_grd,i_lay
 
 time_s=time_step*DBLE(n_time*time_beg)
@@ -44,24 +43,27 @@ time_e=time_step*DBLE(n_time*time_end)
 i_time=1
 time_loop=0.0D0
 TINIR=0.0D0
-do while (time_loop(1).LT.time_e)
-    do i_site=1,n_site
-        time_cur(i_site)=time_loop(i_site)+time_restart
-        call save_results(i_site,time_cur(i_site),time_loop(i_site))
+do while (time_loop.LT.time_e)
+	do i_site=1,n_site
+    	time_cur=time_loop+time_restart
+        call save_results(i_site,time_cur,time_loop)
         6666  continue
+        
         !do while (i_time(i_site).LT.n_time)
-        call stefan1D(temp(i_site,:),n_grd,dz,time_loop(i_site),i_site,lay_id(i_site,:), &
+        !write(*,*)time_loop, i_site, i_time, n_time
+        call stefan1D(temp(i_site,:),n_grd,dz,time_loop,i_site,lay_id(i_site,:), &
                     temp_grd(i_site))
-        time_loop(i_site)=time_loop(i_site)+time_step
-        time_cur(i_site)=time_loop(i_site)+time_restart
+        time_loop=time_loop+time_step
+        time_cur=time_loop+time_restart
         if(i_time(i_site).LT.n_time)  then
             i_time(i_site)=i_time(i_site)+1
-            call save_results(i_site,time_cur(i_site),time_loop(i_site))
+            call save_results(i_site,time_cur,time_loop)
             call active_layer(i_site)
-            GOTO 6666
+        !    write(*,*) 'goto', i_time,time_loop
+           GOTO 6666
         endif
         !enddo
-        if(time_s.LT.time_e.AND.time_loop(1).GT.time_s)then
+        if(time_s.LT.time_e.AND.time_loop.GT.time_s)then
             do j_time=1,n_time			! WRITTING RESULTS
                 write(1,FMT1) i_site, (RES(j_time,i_grd),i_grd=1,m_grd+3)
             enddo
@@ -71,55 +73,65 @@ do while (time_loop(1).LT.time_e)
         enddo
      enddo
 
-      i_time=1
-      do i_site=1,n_site
-           frz_up_time_cur=-7777.D0
-           frz_up_time_tot=frz_up_time_cur
-           do j_time=2,n_time
-              if((n_frz_frn(j_time,i_site)-n_frz_frn(j_time-1,i_site)).EQ.-2)then
-                if(z_frz_frn(j_time-1,n_frz_frn(j_time-1,i_site),i_site).GE.frz_frn_min) frz_up_time_cur=SNGL(RES(j_time,1))
-              endif
-      enddo
+    i_time=1
+    do i_site=1,n_site
+     	frz_up_time_cur=-7777.D0
+        frz_up_time_tot=frz_up_time_cur
+        do j_time=2,n_time
+        	if((n_frz_frn(j_time,i_site)-n_frz_frn(j_time-1,i_site)).EQ.-2)then
+            	if(z_frz_frn(j_time-1,n_frz_frn(j_time-1,i_site),i_site).GE.frz_frn_min) frz_up_time_cur=SNGL(RES(j_time,1))
+            endif
+      	enddo
 
-      if(frz_up_time_cur.GT.0.0)then
-            frz_up_time_tot=AMOD(frz_up_time_cur,REAL(n_time))
-            if(frz_up_time_tot.EQ.0.0)frz_up_time_tot=REAL(n_time)
-      endif
+      	if(frz_up_time_cur.GT.0.0)then
+          	frz_up_time_tot=AMOD(frz_up_time_cur,REAL(n_time))
+          	if(frz_up_time_tot.EQ.0.0)frz_up_time_tot=REAL(n_time)
+      	endif
+      	dfrz_frn=z_frz_frn(:,1,i_site)
 
-      dfrz_frn=z_frz_frn(:,1,i_site)
-      call save_results(i_site,time_cur(i_site),time_loop(i_site))
-      call active_layer(i_site)
+      	call save_results(i_site,time_cur,time_loop)
+      	call active_layer(i_site)
 
-    !____WRITTING MEAN
-      write(2,FMT2) i_site,(res_save(i_grd,i_site)/DBLE(n_time),i_grd=1,m_grd+3), &
-                                dfrz_frn(n_time),frz_up_time_cur,frz_up_time_tot
-      do j_time=1,n_time+2
-            utemp_time_i(j_time)=time_cur(1)+DBLE(j_time-1)*time_step
-      enddo
-      call interpolate(utemp_time,utemp(:,i_site),n_temp,utemp_time_i,utemp_i(:,i_site),n_time+2)
-      call interpolate(snd_time,snd(:,i_site),n_snow,utemp_time_i,snd_i(:,i_site),n_time+2)
-      call snowfix(utemp_i(:,i_site),snd_i(:,i_site),n_time+2)
-      call interpolate(stcon_time,stcon(:,i_site),n_stcon,utemp_time_i,stcon_i(:,i_site),n_time+2)
+    	!____WRITTING MEAN
+      	write(2,FMT2) i_site,(res_save(i_grd,i_site)/DBLE(n_time),i_grd=1,m_grd+3), &
+                       dfrz_frn(n_time),frz_up_time_cur,frz_up_time_tot
+      	do j_time=1,n_time+2
+           	utemp_time_i(j_time)=time_cur+DBLE(j_time-1)*time_step
+      	enddo
+      	call interpolate(utemp_time,utemp(:,i_site),n_temp,utemp_time_i,utemp_i(:,i_site),n_time+2)
+      	call interpolate(snd_time,snd(:,i_site),n_snow,utemp_time_i,snd_i(:,i_site),n_time+2)
+      	call snowfix(utemp_i(:,i_site),snd_i(:,i_site),n_time+2)
+      	call interpolate(stcon_time,stcon(:,i_site),n_stcon,utemp_time_i,stcon_i(:,i_site),n_time+2)
     enddo
+	call save_restart
 
-    rewind(3) ! -------------start file writting begin
-    write(3, * ) time_restart
-!   write(3, * ) time_cur(1)
-
-    do i_grd=1,n_grd
-        write (3,* ) ( temp(i_site,i_grd),i_site=1,n_site)
-    enddo     ! -------------start file writting end
-
-    TINIR=time_loop(1)
+    TINIR=time_loop
 enddo
 
 end subroutine run_model
 
-subroutine finilize
+
+subroutine save_restart
+use bnd
+use thermo
+use grd
+implicit none 
+    integer :: i_site,i_grd
+    
+    rewind(3) 
+    write(3, * ) time_restart
+    do i_grd=1,n_grd
+        write (3,* ) ( temp(i_site,i_grd),i_site=1,n_site)
+    enddo    
+    
+end subroutine save_restart
+
+
+subroutine finalize
 
 close(1);close(2);close(3)
 
-end subroutine finilize
+end subroutine finalize
 
  
 subroutine initialize
