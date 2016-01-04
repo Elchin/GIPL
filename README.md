@@ -17,7 +17,9 @@ Jafarov, E. E., Marchenko, S. S., and Romanovsky, V. E.: Numerical modeling of p
 ###What to do first: 
 **Windows**: Compile the gipl.f90 and call the executable file gipl.exe  <br />
 **Linux**: Use Makefile to create executable, just type 'make' in your command line  <br />
-Please see the 'cfg' file for more information on how to orginize and input and output files. All input files should be stored in "in" folder. The path for the output files can be prescribed in the config file. Current output configuration include 3 files: 'results.txt' file with daily output, 'mean.txt' with the yearly averaged data such as active layer thickness and freezeup day, and the file 'start.txt' includes the temperature profilee with depth for the last day of a simulation. The file with measured temperatures is 'mesres.txt'. The compare(0) is a matlab script that polts the output daily file against measured data for four specified depths and estimates the mean average error between the measured and the calculated ground temperatures. 
+Please see the 'cfg' file for more information on how to orginize and input and output files. All input files should be stored in "in" folder. The path for the output files can be prescribed in the config file. Current output configuration include 3 files: 'results.txt' file with daily output, 'mean.txt' with the yearly averaged data such as active layer thickness and freezeup day, and the file 'start.txt' includes the temperature profilee with depth for the last day of a simulation. The result.txt has the following structure: time, upper_bnd_temperature, snow_depth, ground_temperatures, where 'ground_temperatures' assigned in grid.txt (see below).
+
+The file with measured temperatures is 'mesres.txt'. The header for mesres is in the compare.m script. The command '>>compare(0)' executes the matlab script that plots the output daily file against measured data for four specified depths and estimates the mean average error between the measured and the calculated ground temperatures. 
 
 ###Input data:
 All input files are located in the "in" folder
