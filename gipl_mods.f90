@@ -37,10 +37,6 @@ real*8 :: sat_coef                                     ! saturation coefficient 
 ! output file names
 character(64) :: restart_file,result_file,aver_res_file
 
-type site_gipl
-   real*8 :: time
-end type site_gipl
-
 end module bnd
 
 module thermo
@@ -85,11 +81,13 @@ integer :: n_ini                                        ! number of vertical gri
 real*8, allocatable :: zdepth_ini(:),ztemp_ini(:,:)     ! depth and correspoding initial temperature (time=0) 'zdepth_ini(n_ini)'
 character(210) :: FMT1,FMT2                             ! results formating type
 
+type active_layer_thickness
+   integer,allocatable::n_frz_frn(:,:)                     ! number of freezing front (e.g. when freezup is about to happened)
+   integer,allocatable::i_time(:)                          ! internal time step with the the main loop
+   real*8 ,allocatable::z_frz_frn(:,:,:)                   ! depth of the freezing front
+end type active_layer_thickness
+type(active_layer_thickness) :: alt  ! alt variables
+
 end module grd
 
-module alt
-integer,allocatable::n_frz_frn(:,:)                     ! number of freezing front (e.g. when freezup is about to happened)
-integer,allocatable::i_time(:)                          ! internal time step with the the main loop
-real*8 ,allocatable::z_frz_frn(:,:,:)                   ! depth of the freezing front
-end module alt
 

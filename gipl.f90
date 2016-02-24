@@ -9,7 +9,7 @@ program gipl2
 use bnd
 use thermo
 use grd
-use alt
+
 
 call initialize
 call run_model
@@ -23,7 +23,7 @@ use const
 use bnd
 use thermo
 use grd
-use alt
+
 
 implicit none
 
@@ -40,7 +40,7 @@ implicit none
 
 time_s=time_step*DBLE(n_time*time_beg)
 time_e=time_step*DBLE(n_time*time_end)
-i_time=1
+alt%i_time=1
 time_loop=0.0D0
 TINIR=0.0D0
 do while (time_loop.LT.time_e)
@@ -49,14 +49,14 @@ do while (time_loop.LT.time_e)
         call save_results(i_site,time_cur,time_loop)
         6666  continue
         
-        !do while (i_time(i_site).LT.n_time)
+        !do while (alt%i_time(i_site).LT.n_time)
         !write(*,*)time_loop, i_site, i_time, n_time
         call stefan1D(temp(i_site,:),n_grd,dz,time_loop,i_site,lay_id(i_site,:), &
                     temp_grd(i_site))
         time_loop=time_loop+time_step
         time_cur=time_loop+time_restart
-        if(i_time(i_site).LT.n_time)  then
-            i_time(i_site)=i_time(i_site)+1
+        if(alt%i_time(i_site).LT.n_time)  then
+            alt%i_time(i_site)=alt%i_time(i_site)+1
             call save_results(i_site,time_cur,time_loop)
             call active_layer(i_site)
         !    write(*,*) 'goto', i_time,time_loop
@@ -73,13 +73,13 @@ do while (time_loop.LT.time_e)
         enddo
      enddo
 
-    i_time=1
+    alt%i_time=1
     do i_site=1,n_site
      	frz_up_time_cur=-7777.D0
         frz_up_time_tot=frz_up_time_cur
         do j_time=2,n_time
-        	if((n_frz_frn(j_time,i_site)-n_frz_frn(j_time-1,i_site)).EQ.-2)then
-            	if(z_frz_frn(j_time-1,n_frz_frn(j_time-1,i_site),i_site).GE.frz_frn_min) frz_up_time_cur=SNGL(RES(j_time,1))
+        	if((alt%n_frz_frn(j_time,i_site)-alt%n_frz_frn(j_time-1,i_site)).EQ.-2)then
+            	if(alt%z_frz_frn(j_time-1,alt%n_frz_frn(j_time-1,i_site),i_site).GE.frz_frn_min) frz_up_time_cur=SNGL(RES(j_time,1))
             endif
       	enddo
 
@@ -87,7 +87,7 @@ do while (time_loop.LT.time_e)
           	frz_up_time_tot=AMOD(frz_up_time_cur,REAL(n_time))
           	if(frz_up_time_tot.EQ.0.0)frz_up_time_tot=REAL(n_time)
       	endif
-      	dfrz_frn=z_frz_frn(:,1,i_site)
+      	dfrz_frn=alt%z_frz_frn(:,1,i_site)
 
       	call save_results(i_site,time_cur,time_loop)
       	call active_layer(i_site)
@@ -139,7 +139,7 @@ use const
 use bnd
 use thermo
 use grd
-use alt
+
 
 implicit none
 
@@ -402,9 +402,9 @@ implicit none
     allocate(dz(n_grd),STAT=IERR)
     allocate(temp(n_site,n_grd),STAT=IERR)
     allocate(lay_id(n_site,n_grd),STAT=IERR)
-    allocate(i_time(n_site),STAT=IERR)
-    allocate(z_frz_frn(n_time,n_frz_max,n_site),STAT=IERR)
-    allocate(n_frz_frn(n_time,n_site),STAT=IERR)
+    allocate(alt%i_time(n_site),STAT=IERR)
+    allocate(alt%z_frz_frn(n_time,n_frz_max,n_site),STAT=IERR)
+    allocate(alt%n_frz_frn(n_time,n_site),STAT=IERR)
     allocate(temp_frz(n_lay,n_site),STAT=IERR)
  	allocate(RES(n_time,m_grd+3),STAT=IERR)
  	
@@ -481,7 +481,7 @@ subroutine active_layer(k)
 use bnd
 use thermo
 use grd
-use alt
+
 
 implicit none
 
@@ -489,8 +489,8 @@ implicit none
     real*8 GA,GB,YFRON,GX,GY
     real*8 fsat_unf_water
 
-    z_frz_frn(i_time(k),:,k)=sea_level
-    n_frz_frn(i_time(k),k)=0
+    alt%z_frz_frn(alt%i_time(k),:,k)=sea_level
+    alt%n_frz_frn(alt%i_time(k),k)=0
     do 1329 JJ=1,n_grd-1
         J=n_grd-JJ
         if (zdepth(J).GE.sea_level.AND.zdepth(J+1).LE.frz_frn_max)then
@@ -507,9 +507,9 @@ implicit none
             else
             GOTO 1329
         endif
-        if(n_frz_frn(i_time(k),k).LT.n_frz_max)then
-            n_frz_frn(i_time(k),k)=n_frz_frn(i_time(k),k)+1
-            z_frz_frn(i_time(k),n_frz_frn(i_time(k),k),k)=YFRON
+        if(alt%n_frz_frn(alt%i_time(k),k).LT.n_frz_max)then
+            alt%n_frz_frn(alt%i_time(k),k)=alt%n_frz_frn(alt%i_time(k),k)+1
+            alt%z_frz_frn(alt%i_time(k),alt%n_frz_frn(alt%i_time(k),k),k)=YFRON
             endif
         endif
     1329 CONTINUE
@@ -519,18 +519,17 @@ end subroutine active_layer
 subroutine save_results(k,time1,time2)
 use thermo
 use grd
-use alt
 
 implicit none
     integer :: k,j
     real*8 :: time1,time2
     real*8 :: futemp,fsnow_level
 
-    RES(i_time(k),1)=time1
-    RES(i_time(k),2)=futemp(time2,k)
-    RES(i_time(k),3)=fsnow_level(k,time2)
+    RES(alt%i_time(k),1)=time1
+    RES(alt%i_time(k),2)=futemp(time2,k)
+    RES(alt%i_time(k),3)=fsnow_level(k,time2)
     do  J=1,m_grd
-        RES(i_time(k),J+3)=temp(k,zdepth_id(J))
+        RES(alt%i_time(k),J+3)=temp(k,zdepth_id(J))
     enddo
 
 end subroutine save_results
