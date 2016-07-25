@@ -407,6 +407,7 @@ implicit none
     allocate(n_frz_frn(n_time,n_site),STAT=IERR)
     allocate(temp_frz(n_lay,n_site),STAT=IERR)
  	allocate(RES(n_time,m_grd+3),STAT=IERR)
+ 	i_time=1  ! active_layer uses it below, needs to be initialized here
  	
  	z=zdepth/zdepth(n_grd)
     do i_grd=2,n_grd
