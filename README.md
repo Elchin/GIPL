@@ -15,7 +15,7 @@ Jafarov E.E., Nicolsky D.J., Romanovsky V.E., Walsh J.E., Panda S.K., Serreze M.
 
 **Windows**: Compile the `gipl.f90` and call the executable file `gipl.exe`.
 
-**Linux**: Use Makefile to create executable, just type 'make' in your command line.
+**Linux**: Use Makefile to create executable, just type `make` in your command line.
 
 # Run: 
 Make sure to create a folder called `out` before running the executable file (cfg file in Setup below).  <br />
