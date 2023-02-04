@@ -2,7 +2,7 @@
 
 GIPL is a transient numerical model that employs phase changes and the effect of unfrozen volumetric water content in non-homogeneous soil texture. 
 The original version of the model was originally developed by Romanovsky and Tipenko (2004) at the University of Alaska Fairbanks, and described in Marchenko et al., (2008). This version has been significantly modified from its predecessor and was adapted to the IRF (Initialize, Run, Finalize) coding standard structure (see [Basic Model Interface](http://csdms.colorado.edu/wiki/BMI_Description)). 
-This version is maintained by Elchin Jafarov. Please cite Jafarov et al., (2012) when using the model. This model is a part of the [permamodel project](https://github.com/permamodel/permamodel).
+This version is maintained by Elchin Jafarov. Please cite Jafarov et al., (2012) when using the model. This model is a part of [permamodel project](https://github.com/permamodel/permamodel).
 
 # References:
 Jafarov, E. E., Marchenko, S. S., and Romanovsky, V. E.: Numerical modeling of permafrost dynamics in Alaska using a high spatial resolution dataset, The Cryosphere, 6, 613–624, https://doi.org/10.5194/tc-6-613-2012, 2012.
