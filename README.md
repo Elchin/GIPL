@@ -13,12 +13,12 @@ Jafarov E.E., Nicolsky D.J., Romanovsky V.E., Walsh J.E., Panda S.K., Serreze M.
 
 # Installation: 
 
-**Windows**: Compile the `gipl.f90` and call the executable file `gipl.exe`.
+**Windows**: Compile the `gipl.f90` using [gfortran](https://gcc.gnu.org/wiki/GFortran) or similar compiler and name the executable file `gipl.exe`.
 
-**Linux**: Use Makefile to create executable, just type `make` in your command line.
+**Linux**: Use Makefile to create an executable. Navigate to the GIPL folde and type `make` in the terminal.
 
 # Run: 
-Make sure to create a folder called `out` before running the executable file (cfg file in Setup below).  <br />
+Make sure to create a folder called `out` before running the executable file (see [`gipl_config.cfg`](https://github.com/Elchin/GIPL/blob/master/gipl_config.cfg)).  <br />
 
 # Visualize:
 The file with measured temperatures is [`mesres.txt`](https://github.com/Elchin/GIPL/blob/master/mesres.txt). The header for the `mesres.txt` can be found in  the `compare.m` script. Type the command `>>compare(0)` to execute the script in the [Matlab](https://www.mathworks.com/products/matlab.html). The script plots the daily measured against calculated ground temperatures at four specified depth as shown in the figure below. 
