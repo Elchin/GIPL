@@ -21,7 +21,7 @@ Jafarov E.E., Nicolsky D.J., Romanovsky V.E., Walsh J.E., Panda S.K., Serreze M.
 Make sure to create a folder called `out` before running the executable file (see [`gipl_config.cfg`](https://github.com/Elchin/GIPL/blob/master/gipl_config.cfg)).  <br />
 
 # Visualize:
-The file with measured temperatures is [`mesres.txt`](https://github.com/Elchin/GIPL/blob/master/mesres.txt). The header for the `mesres.txt` can be found in  the `compare.m` script. Type the command `>>compare(0)` to execute the script in the [Matlab](https://www.mathworks.com/products/matlab.html). The script plots the daily measured against calculated ground temperatures at four specified depth as shown in the figure below. 
+The file with measured temperatures is [`mesres.txt`](https://github.com/Elchin/GIPL/blob/master/mesres.txt). The header for the `mesres.txt` can be found in  the `compare.m` script. Type the command `>>compare(0)` to execute the script in the [Matlab](https://www.mathworks.com/products/matlab.html). The script plots the daily measured against calculated ground temperatures at four specified depth as shown in the figure below. Also checkout the jupyter notebook [example](https://github.com/Elchin/GIPL/blob/master/plot_results.ipynb).
 ![results](https://github.com/Elchin/GIPL/blob/master/results.png)
 
 # Input/Output Setup:
