@@ -50,56 +50,53 @@ saturation_coefficient (fraction of 1)
 Includes the total number of sites and the corresponding ids for the organic and mineral soils. In the current version, the number of sites is equal to 1.
 
 ### **bound.txt** 
-Include upper boundary condition (in the example it is an air temperature T [Celsius])<br />
+Include upper boundary condition (in the example it is an air temperature)<br />
 ```
 First row is a number of observations (in the example number of day)
 Column 1: Time parameter (day number)
-Column 2: Temperature (daily averaged temperature)
+Column 2: Temperature (daily averaged temperature [Celsius])
 ```
 
 ### **snow.txt** 
-Include snow depth [$$meter$$] (in the example it is daily snow depth)<br />
+Include snow depth (in the example it is daily snow depth)<br />
 ```
 First row is a number of observations (in the example number of day)
 Column 1: Time parameter (day number)
-Column 2: Snow depth (daily averaged)
+Column 2: Snow depth (daily averaged [m])
 ```
 
 ### **rsnow.txt** 
-Include snow thermal conductivity [W/(mK)] (in the example it is daily snow conductivity)<br />
+Include snow thermal conductivity (in the example it is daily snow conductivity)<br />
 ```
 First row is a number of observations (in the example number of day) 
 Column 1: Time parameter (day number)
-Column 2: Snow conductivity (daily averaged)
+Column 2: Snow conductivity (daily averaged [W/(mK)])
 ```
 
 ### **grid.txt** 
-Includes number of grid point (n), <br />
-vertical grid (in the example starts from the 1.5 meters above the ground up to 90 meters) 
-minus sign corresponds to the values above the ground surface and plus corresponds to the values below the surface.
-Let me denote the n elements of the grid as "gr"
-The n+1 element of the grid corresponds to the number of output points (in the example it is 12)
-The rest of the grid file correspond to indexes of the grid points (e.g. the number 40 below the 12 is the index of the 
-gr(40)=0.001)
+Includes number of grid point (`n`), <br />
+In the example, the vertical grid starts from the 1.5 meters above the ground up to 90 meters deep. 
+The minus sign corresponds to the values above the ground surface and plus corresponds to the values below the surface.
+For more clarity, copy and paste the grid into the excel file. The `n+1` element of the grid corresponds to the number of output points (in the example it is 12). The rest of the grid file correspond to indexes of the grid points (e.g. the number 40 below the 12 is the index of the gr(40)=0.001).
 
 ### **initial.txt** 
-Includes all initial temperatures <br />
-the code reads initial.txt file when in cmd.txt the first element is equal to 1. (e.i. start from the initial time step)
-the first parameter in the file can be ignored / second parameter is the number of points (in the example it is 13)
-The first column corresponds to the depth in meters and the second column to the temperature [Celsius] measured at that depth at time=0
+Includes the initial temperatures with depth profile.
+The model reads `initial.txt` file when in `cmd.txt` the first element is equal to 1 (e.i. start from the initial time step).
+The first parameter in `initial.txt` can be ignored, the second parameter is the number of points (in the example it is equal 13).
+The first column corresponds to the depth [m] and the second column to the temperature [Celsius] measured at that depth at time=0.
 
 ### **mineral.txt** 
-Includes all thermo-physical properties of the multilayered soil column
-```
-the first row can be ignored
-second row first element can be also ignored / second element in this row corresponds to the number of layer 
+Includes all thermo-physical properties of the multilayered soil column.
+
+The first row can be ignored.
+In the second row, the first element can be also ignored. The second element in this row corresponds to the number of layers, 
 starting from row 3 to row 8 are thermo-physical properties of each layer.
-the first column is the volumetric water content (WVC) [fraction of 1]
-second and third columns are "a" and "b" coefficients of the unfrozen water curve (obtained from unfrozen water curve fitting) [dimensionless]
-forth and fifth columns are the thawed and frozen volumetric heat capacities [J/(m^3K)]
-six and seven columns are the thawed and frozen heat conductivities [W/(mK)]
-eighths column is the thickness of the corresponding layer
-```
+The first column is the volumetric water content (WVC)  is a fraction of 1.
+The second and the third columns are "a" and "b" coefficients of the unfrozen water curve (obtained from unfrozen water curve fitting) [dimensionless].
+The forth and the fifth columns are the thawed and frozen volumetric heat capacities [J/(m^3K)].
+The six and the seven columns are thawed and frozen heat conductivities [W/(mK)].
+The eighths column is the thickness of the corresponding layer.
+
 
 ### **organic.txt** 
-Includes a similar structure to `mineral.txt` and carries the parameters for the organic soil layer.
+Includes a similar structure to `mineral.txt` and carries the parameters for the organic soil layer/s.
