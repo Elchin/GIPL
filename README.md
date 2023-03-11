@@ -100,3 +100,6 @@ The eighths column is the thickness of the corresponding layer.
 
 ### **organic.txt** 
 Includes a similar structure to `mineral.txt` and carries the parameters for the organic soil layer/s.
+
+### **sites.txt** 
+This file includes `site_id`, `snow_code`, `veg_code`, `geo_code`, `gt_zone_code`, and `temp_grd`. This file is useful when we run multiple sites at the same time and have multiple organic and mineral soils, snow parameters, and so on. The current setup uses a temperature gradient equal 0.0 at the lower boundary of the grid.
