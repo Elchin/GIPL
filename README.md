@@ -17,6 +17,12 @@ Jafarov E.E., Nicolsky D.J., Romanovsky V.E., Walsh J.E., Panda S.K., Serreze M.
 
 **Linux**: Use Makefile to create an executable. Navigate to the GIPL folde and type `make` in the terminal.
 
+**Mac**:
+```bash 
+conda env create --file gipl.yml
+source activate gipl
+make
+```
 # Run: 
 Make sure to create a folder called `out` before running the executable file (see [`gipl_config.cfg`](https://github.com/Elchin/GIPL/blob/master/gipl_config.cfg)).  <br />
 

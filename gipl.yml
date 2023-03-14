@@ -1,0 +1,8 @@
+# Build GIPL from source.
+name: gipl
+channels:
+  - conda-forge
+dependencies:
+  - python =3
+  - fortran-compiler
+  - make
