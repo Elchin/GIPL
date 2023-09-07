@@ -7,9 +7,11 @@ This version is maintained by [Elchin Jafarov](https://www.woodwellclimate.org/s
 # References:
 Jafarov, E. E., Marchenko, S. S., and Romanovsky, V. E.: Numerical modeling of permafrost dynamics in Alaska using a high spatial resolution dataset, The Cryosphere, 6, 613–624, https://doi.org/10.5194/tc-6-613-2012, 2012.
 
-Jafarov, E. E., Romanovsky V. E., Genet, H., McGuire A., D., Marchenko, S. S.: The effects of fire on the thermal stability of permafrost in lowland and upland black spruce forests of interior Alaska in a changing climate, Environmental Research Letters, 8, 035030, 2013. https://doi.org/10.1088/1748-9326/8/3/035030
+Jafarov, E. E., Romanovsky, V. E., Genet, H., McGuire A., D., Marchenko, S. S.: The effects of fire on the thermal stability of permafrost in lowland and upland black spruce forests of interior Alaska in a changing climate, Environmental Research Letters, 8, 035030, 2013. https://doi.org/10.1088/1748-9326/8/3/035030
 
-Jafarov E.E., Nicolsky D.J., Romanovsky V.E., Walsh J.E., Panda S.K., Serreze M.C. 2014. The effect of snow: How to better model ground surface temperatures. Cold Regions Science and Technology, Volume 102, Pages 63-77, ISSN 0165-232X, [doi: 10.1016/j.coldregions.2014.02.007](http://www.sciencedirect.com/science/article/pii/S0165232X1400038X). 
+Jafarov, E.E., Nicolsky, D.J., Romanovsky, V.E., Walsh, J.E., Panda, S.K., Serreze, M.C. 2014. The effect of snow: How to better model ground surface temperatures. Cold Regions Science and Technology, Volume 102, Pages 63-77, ISSN 0165-232X, [doi: 10.1016/j.coldregions.2014.02.007](http://www.sciencedirect.com/science/article/pii/S0165232X1400038X). 
+
+Zlotnik, V.A., Harp, D.R., Jafarov, E.E., Abolt, C.J. A Model of Ice Wedge Polygon Drainage in Changing Arctic Terrain. Water 2020, 12, 3376. [https://doi.org/10.3390/w12123376](https://www.mdpi.com/2073-4441/12/12/3376)
 
 # Installation: 
 
