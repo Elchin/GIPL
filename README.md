@@ -15,9 +15,9 @@ Zlotnik, V.A., Harp, D.R., Jafarov, E.E., Abolt, C.J. A Model of Ice Wedge Polyg
 
 # Installation: 
 
-**Windows**: Compile the `gipl.f90` using [gfortran](https://gcc.gnu.org/wiki/GFortran) or similar compiler and name the executable file `gipl.exe`.
+**Windows**: Compile the `gipl.f90` using [gfortran](https://gcc.gnu.org/wiki/GFortran) or a similar compiler and name the executable file `gipl.exe`.
 
-**Linux**: Use Makefile to create an executable. Navigate to the GIPL folde and type `make` in the terminal.
+**Linux**: Use Makefile to create an executable. Navigate to the GIPL folder and type `make` in the terminal.
 
 **Mac**:
 ```bash 
@@ -39,16 +39,16 @@ The file with measured temperatures is [`mesres.txt`](https://github.com/Elchin/
 All input files are located in the [`in`](https://github.com/Elchin/GIPL/tree/master/in) folder.
 
 ### **gipl_config.cfg** 
-Includes paths for input and output files and the correspoding setup paramteres. <br />
+Includes paths for input and output files and the corresponding setup parameters. <br />
 ```
-0/1: start from previous time step / start from the begining
+0/1: start from the previous time step / start from the beginning
 step | taum | tmin :
     step is the timestep in the example it is 1
     taum is the convergence parameter used by the stefan subroutine 
     tmin minimal timestep used in the Stefan subroutine
-begin | end : start and end, in the example it runs over one year from 0 to 1
+begin | end : start and end, in the example, it runs over one year from 0 to 1
 smoothing_factor | unfrozen_water_parameter | max number of iterations
-number_of_second_per_day [sec] | number_of_time_steps (in the example number of days in a year )
+number_of_second_per_day [sec] | number_of_time_steps (in the example, number of days in a year )
 sea_level | max_number_of_freezing_fronts [integer number]
 freezing_front_min | freezing_front_max depth [meters]
 saturation_coefficient (fraction of 1)
@@ -66,26 +66,26 @@ Column 2: Temperature (daily averaged temperature [Celsius])
 ```
 
 ### **snow.txt** 
-Include snow depth (in the example it is daily snow depth)<br />
+Include snow depth (in the example, it is daily snow depth)<br />
 ```
-First row is a number of observations (in the example number of day)
+The first row is the number of observations (in the example, number of a day)
 Column 1: Time parameter (day number)
 Column 2: Snow depth (daily averaged [m])
 ```
 
 ### **rsnow.txt** 
-Include snow thermal conductivity (in the example it is daily snow conductivity)<br />
+Include snow thermal conductivity (in the example, it is daily snow conductivity)<br />
 ```
-First row is a number of observations (in the example number of day) 
+The first row is the number of observations (in the example, the number of a day) 
 Column 1: Time parameter (day number)
 Column 2: Snow conductivity (daily averaged [W/(mK)])
 ```
 
 ### **grid.txt** 
 Includes number of grid point (`n`), <br />
-In the example, the vertical grid starts from the 1.5 meters above the ground up to 90 meters deep. 
-The minus sign corresponds to the values above the ground surface and plus corresponds to the values below the surface.
-For more clarity, copy and paste the grid into the excel file. The `n+1` element of the grid corresponds to the number of output points (in the example it is 12). The rest of the grid file correspond to indexes of the grid points (e.g. the number 40 below the 12 is the index of the gr(40)=0.001).
+In the example, the vertical grid starts from 1.5 meters above the ground up to 90 meters deep. 
+The minus sign corresponds to the values above the ground surface, and plus corresponds to the values below the surface.
+For more clarity, copy and paste the grid into the Excel file. The `n+1` element of the grid corresponds to the number of output points (in the example, it is 12). The rest of the grid file corresponds to indexes of the grid points (e.g., the number 40 below the 12 is the index of the gr(40)=0.001).
 
 ### **initial.txt** 
 Includes the initial temperatures with depth profile.
@@ -97,13 +97,14 @@ The first column corresponds to the depth [m] and the second column to the tempe
 Includes all thermo-physical properties of the multilayered soil column.
 
 The first row can be ignored.
-In the second row, the first element can be also ignored. The second element in this row corresponds to the number of layers, 
-starting from row 3 to row 8 are thermo-physical properties of each layer.
-The first column is the volumetric water content (WVC)  is a fraction of 1.
-The second and the third columns are "a" and "b" coefficients of the unfrozen water curve (obtained from unfrozen water curve fitting) [dimensionless].
-The forth and the fifth columns are the thawed and frozen volumetric heat capacities [J/(m^3K)].
-The six and the seven columns are thawed and frozen heat conductivities [W/(mK)].
-The eighths column is the thickness of the corresponding layer.
+In the second row, the first element can also be ignored. The second element in this row corresponds to the number of layers, 
+starting from row 3 to row 8, which are thermo-physical properties of each layer.<br />
+| $WVC$ | $a$ | $b$ | $C_{th}$ | $C_{fr}$ | $k_{th}$ | $k_{fr}$ | $layer_{depth}$| <br />
+$WVC$ is the volumetric water content (WVC)  is a fraction of 1.<br />
+$a$ and $b$ are coefficients of the unfrozen water curve (obtained from unfrozen water curve fitting) [dimensionless].<br />
+$C_{th}$ and $C_{fr}$ are the thawed and frozen volumetric heat capacities [J/(m^3K)].<br />
+$k_{th}$ and $k_{fr}$ are thawed and frozen heat conductivities [W/(mK)].<br />
+$layer_{depth}$ is the thickness of the corresponding layer.
 
 
 ### **organic.txt** 
